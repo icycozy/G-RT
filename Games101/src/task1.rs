@@ -29,12 +29,18 @@ pub fn t1()-> Result<()>{
     let mut k = 0;
     let mut frame_count = 0;
 
+    let mut flag: bool = false;
+    let axis: Vector3<f64> = Vector3::new(1.0, 2.0, 3.0);
     while k != 27 {
         r.clear(Buffer::Both);
-        r.set_model(get_model_matrix(angle,1.0));
+        if flag {
+            r.set_model(get_model_matrix(angle, 1.0, axis));
+        } else {
+            r.set_model(get_model_matrix(angle, 1.0, Vector3::new(0.0, 0.0, 1.0)));
+        }
         r.set_view(get_view_matrix(eye_pos));
         r.set_projection(get_projection_matrix(45.0, 1.0, 0.1, 50.0));
-        r.draw_triangle(pos_id, ind_id, Primitive::Triangle);
+        r.draw_triangle(pos_id, ind_id, Primitive::Triangle, flag);
 
         let frame_buffer = r.frame_buffer();
         let image = frame_buffer2cv_mat(frame_buffer);
@@ -44,9 +50,14 @@ pub fn t1()-> Result<()>{
         println!("frame count: {}", frame_count);
         if k == 'a' as i32 {
             angle += 10.0;
+            flag = false;
         } else if k == 'd' as i32 {
             angle -= 10.0;
-        } 
+            flag = true;
+        } else if k == 'r' as i32 {
+            angle += 10.0;
+            flag = true;
+        }
         frame_count += 1;
     }
     Ok(())

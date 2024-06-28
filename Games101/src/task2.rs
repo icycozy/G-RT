@@ -42,7 +42,7 @@ pub fn t2() -> Result<()>{
 
     while k != 27 {
         r.clear(Buffer::Both);
-        r.set_model(get_model_matrix(0.0,1.0));
+        r.set_model(get_model_matrix(0.0,1.0,Vector3::new(0.0,0.0,1.0)));
         r.set_view(get_view_matrix(eye_pos));
         r.set_projection(get_projection_matrix(45.0, 1.0, 0.1, 50.0));
         r.draw(pos_id, ind_id, col_id, Primitive::Triangle);

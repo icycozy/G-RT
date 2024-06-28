@@ -161,11 +161,11 @@ impl Rasterizer {
         IndBufId(id)
     }
 
-    pub fn draw_triangle(&mut self, pos_buffer: PosBufId, ind_buffer: IndBufId, _typ: Primitive) {
+    pub fn draw_triangle(&mut self, pos_buffer: PosBufId, ind_buffer: IndBufId, _typ: Primitive, flag: bool) {
         let buf = &self.pos_buf[&pos_buffer.0];
         let ind: &Vec<Vector3<usize>> = &self.ind_buf[&ind_buffer.0];
 
-        let mvp = self.projection * self.view * self.model;
+        let mut mvp = self.projection * self.view * self.model;
 
         for i in ind {
             let t = Rasterizer::get_triangle(self.width, self.height, buf, mvp, i);

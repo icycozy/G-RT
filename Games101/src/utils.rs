@@ -13,23 +13,74 @@ pub type M4f = Matrix4<f64>;
 pub(crate) fn get_view_matrix(eye_pos: V3f) -> M4f {
     let mut view: Matrix4<f64> = Matrix4::identity();
     /*  implement your code here  */
-
+    view[(0, 3)] = -eye_pos[0];
+    view[(1, 3)] = -eye_pos[1];
+    view[(2, 3)] = -eye_pos[2];
     view
 }
 
-pub(crate) fn get_model_matrix(rotation_angle: f64,scale: f64) -> M4f {
+pub fn get_rotation(mut axis: Vector3<f64>, rotation_angle: f64) -> Matrix4<f64> {
+    let mut rotation = Matrix4::identity();
+    let mut rotation_matrix = Matrix3::identity();
+    let rad: f64 = rotation_angle.to_radians();
+    axis = axis.normalize();
+    rotation_matrix = rad.cos() * Matrix3::identity()
+        + (1.0 - rad.cos()) * axis * axis.transpose()
+        + rad.sin() * Matrix3::new(0.0, -axis.z, axis.y,
+                                    axis.z, 0.0, -axis.x,
+                                    -axis.y, axis.x, 0.0);
+    rotation.fixed_slice_mut::<3, 3>(0, 0).copy_from(&rotation_matrix);
+    rotation
+}
+
+pub(crate) fn get_model_matrix(rotation_angle: f64, scale: f64, axis: Vector3<f64>) -> M4f {
     let mut model: Matrix4<f64> = Matrix4::identity();
     /*  implement your code here  */
-
+    model = get_rotation(axis, rotation_angle);
+    model = scale * model;
     model
+}
+
+pub(crate) fn get_model_matrix_lab3(rotation_angle: f64) -> M4f {
+    let mut model: Matrix4<f64> = Matrix4::identity();
+    let rad: f64 = rotation_angle.to_radians();
+    model[(0, 0)] = rad.cos();
+    model[(0, 1)] = -rad.sin();
+    model[(1, 0)] = rad.sin();
+    model[(1, 1)] = rad.cos();
+    let mut scale: M4f = Matrix4::identity();
+    scale[(0, 0)] = 2.5;
+    scale[(1, 1)] = 2.5;
+    scale[(2, 2)] = 2.5;
+    model * scale
 }
 
 pub(crate) fn get_projection_matrix(eye_fov: f64, aspect_ratio: f64, z_near: f64, z_far: f64) -> M4f {
     let mut projection: Matrix4<f64> = Matrix4::identity();
     let mut scale: M4f = Matrix4::identity();
+    let mut translate: M4f = Matrix4::identity();
     /*  implement your code here  */
+    let top = f64::abs(z_near) * -(eye_fov / 2.0).tan(); // - is because of the inverted y-axis
+    let right = top * aspect_ratio;
+    let left = -right;
+    let bottom = -top;
 
-    projection * scale
+    projection[(0, 0)] = z_near;
+    projection[(1, 1)] = z_near;
+    projection[(2, 2)] = z_far + z_near;
+    projection[(2, 3)] = -1.0 * z_far * z_near;
+    projection[(3, 2)] = 1.0;
+
+    scale[(0, 0)] = 2.0 / (right - left);
+    scale[(1, 1)] = 2.0 / (top - bottom);
+    scale[(2, 2)] = 2.0 / (z_near - z_far);
+
+    translate[(0, 3)] = -1.0 * (right + left) / 2.0;
+    translate[(1, 3)] = -1.0 * (top + bottom) / 2.0;
+    translate[(2, 3)] = -1.0 * (z_near + z_far) / 2.0;
+
+    scale * translate * projection
+    // projection * scale
 }
 
 pub(crate) fn frame_buffer2cv_mat(frame_buffer: &Vec<V3f>) -> Mat {
