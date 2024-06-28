@@ -1,4 +1,4 @@
-# 2024G-RT
+# 2024G-RT Tutorial
 2024 from Games101 to Ray Tracing
 
 助教：[蒋捷](https://github.com/jiangjie217527),[刘淇菲](https://github.com/sayZhongWen),[郝朝晖](https://github.com/hzh12345678)
