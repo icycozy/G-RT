@@ -53,7 +53,7 @@ pub fn t1()-> Result<()>{
             flag = false;
         } else if k == 'd' as i32 {
             angle -= 10.0;
-            flag = true;
+            flag = false;
         } else if k == 'r' as i32 {
             angle += 10.0;
             flag = true;

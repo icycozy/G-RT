@@ -107,9 +107,8 @@ impl Rasterizer {
         }
     }
 
-    pub fn rasterize_triangle(&mut self, triangle: &Triangle, mvp: Matrix4<f64>) {
+    pub fn rasterize_triangle(&mut self, t: &Triangle, mvp: Matrix4<f64>) {
         /*  Implement your code here  */
-
 
     }
     
