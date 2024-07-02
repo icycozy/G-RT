@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use nalgebra::{Matrix4, Vector3, Vector4};
 use crate::triangle::Triangle;
+use nalgebra::{Matrix4, Vector3, Vector4};
 
 #[allow(dead_code)]
 pub enum Buffer {
@@ -46,7 +46,7 @@ pub struct IndBufId(usize);
 pub struct ColBufId(usize);
 
 impl Rasterizer {
-    const  SAMPLE_COUNT: usize = 4;
+    const SAMPLE_COUNT: usize = 4;
 
     pub fn new(w: u64, h: u64) -> Self {
         let mut r = Rasterizer::default();
@@ -54,8 +54,10 @@ impl Rasterizer {
         r.height = h;
         r.frame_buf.resize((w * h) as usize, Vector3::zeros());
         r.depth_buf.resize((w * h) as usize, 0.0);
-        r.frame_sample.resize((w * h) as usize * Self::SAMPLE_COUNT, Vector3::zeros());
-        r.depth_sample.resize((w * h) as usize * Self::SAMPLE_COUNT, 0.0);
+        r.frame_sample
+            .resize((w * h) as usize * Self::SAMPLE_COUNT, Vector3::zeros());
+        r.depth_sample
+            .resize((w * h) as usize * Self::SAMPLE_COUNT, 0.0);
         r
     }
 
@@ -123,7 +125,13 @@ impl Rasterizer {
         ColBufId(id)
     }
 
-    pub fn draw(&mut self, pos_buffer: PosBufId, ind_buffer: IndBufId, col_buffer: ColBufId, _typ: Primitive) {
+    pub fn draw(
+        &mut self,
+        pos_buffer: PosBufId,
+        ind_buffer: IndBufId,
+        col_buffer: ColBufId,
+        _typ: Primitive,
+    ) {
         let buf = &self.clone().pos_buf[&pos_buffer.0];
         let ind: &Vec<Vector3<usize>> = &self.clone().ind_buf[&ind_buffer.0];
         let col = &self.clone().col_buf[&col_buffer.0];
@@ -135,11 +143,12 @@ impl Rasterizer {
 
         for i in ind {
             let mut t = Triangle::new();
-            let mut v =
-                vec![mvp * to_vec4(buf[i[0]], Some(1.0)), // homogeneous coordinates
-                     mvp * to_vec4(buf[i[1]], Some(1.0)), 
-                     mvp * to_vec4(buf[i[2]], Some(1.0))];
-    
+            let mut v = vec![
+                mvp * to_vec4(buf[i[0]], Some(1.0)), // homogeneous coordinates
+                mvp * to_vec4(buf[i[1]], Some(1.0)),
+                mvp * to_vec4(buf[i[2]], Some(1.0)),
+            ];
+
             for vec in v.iter_mut() {
                 *vec = *vec / vec.w;
             }
@@ -162,9 +171,11 @@ impl Rasterizer {
             t.set_color(2, col_z[0], col_z[1], col_z[2]);
 
             self.rasterize_triangle(&t);
+            // self.FXAA(&t);
         }
     }
 
+    // MSAA
     pub fn rasterize_triangle(&mut self, t: &Triangle) {
         let mut tri = [Vector3::new(t.v[0].x, t.v[0].y, t.v[0].z),
                        Vector3::new(t.v[1].x, t.v[1].y, t.v[1].z),
@@ -183,7 +194,7 @@ impl Rasterizer {
                         let pos_x = x as f64 + sample_x as f64 * 0.5;
                         let pos_y = y as f64 + sample_y as f64 * 0.5;
                         let pixel_index = ind * Self::SAMPLE_COUNT + sample_x + sample_y * 2;
-                        if inside_triangle(pos_x, pos_y, &tri) {   
+                        if inside_triangle(pos_x, pos_y, &tri) {
                             self.frame_sample[pixel_index] = t.get_color();
                         }
                         color += self.frame_sample[pixel_index];
@@ -193,7 +204,103 @@ impl Rasterizer {
                 if color != Vector3::zeros() && z < self.depth_buf[ind] {
                     self.depth_buf[ind] = z;
                     Self::set_pixel(self, &Vector3::new(x as f64, y as f64, 0.0), &color);
-                    // Self::set_pixel(self, &Vector3::new(x as f64, y as f64, 0.0), &t.get_color());
+                }
+            }
+        }
+    }
+
+    // Assuming luminance can be calculated as a simple average of the RGB components
+    fn luminance(color: &Vector3<f64>) -> f64 {
+        (color.x + color.y + color.z) / 3.0
+    }
+
+    // FXAA implementation for rasterize_triangle
+    pub fn FXAA(&mut self, t: &Triangle) {
+        // Step 1: Rasterize the triangle normally (filling and edge detection can be done here)
+        // This is a placeholder for the existing triangle rasterization logic
+        self.basic_rasterize_triangle(t);
+        let z = (t.v[0].z + t.v[1].z + t.v[2].z) / 3.0;
+        // Step 2: Apply FXAA
+        for y in 0..self.height as usize {
+            for x in 0..self.width as usize {
+                let index = self.get_index(x, y);
+                let color = self.frame_sample[index];
+                let lum = Self::luminance(&color);
+
+                // Sample neighboring pixels' luminance
+                let lum_left = if x > 0 {
+                    Self::luminance(&self.frame_sample[self.get_index(x - 1, y)])
+                } else {
+                    lum
+                };
+                let lum_right = if x < self.width as usize - 1 {
+                    Self::luminance(&self.frame_sample[self.get_index(x + 1, y)])
+                } else {
+                    lum
+                };
+                let lum_up = if y > 0 {
+                    Self::luminance(&self.frame_sample[self.get_index(x, y - 1)])
+                } else {
+                    lum
+                };
+                let lum_down = if y < self.height as usize - 1 {
+                    Self::luminance(&self.frame_sample[self.get_index(x, y + 1)])
+                } else {
+                    lum
+                };
+
+                // Calculate gradient
+                let gradient = ((lum_left - lum_right).abs() + (lum_up - lum_down).abs()) / 2.0;
+
+                // Determine blend weight based on gradient
+                let blend_weight = self.calculate_blend_weight(gradient);
+
+                // Blend colors based on weight
+                let color = self.blend_color(x, y, blend_weight);
+
+                // Apply blended color
+                Self::set_pixel(self, &Vector3::new(x as f64, y as f64, 0.0), &color);
+            }
+        }
+    }
+
+    // Placeholder for blend weight calculation based on gradient
+    fn calculate_blend_weight(&self, gradient: f64) -> f64 {
+        // Simplified example: inversely proportional to gradient
+        1.0 - gradient.clamp(0.0, 1.0)
+    }
+
+    fn blend_color(&self, x: usize, y: usize, weight: f64) -> Vector3<f64> {
+        // Simplified example: blend with neighboring pixels
+        let mut sum = Vector3::zeros();
+        let mut count = 0.0;
+        for i in -1..=1 {
+            for j in -1..=1 {
+                let nx = (x as isize + i).clamp(0, self.width as isize - 1) as usize;
+                let ny = (y as isize + j).clamp(0, self.height as isize - 1) as usize;
+                let ind = self.get_index(nx, ny);
+                sum += self.frame_sample[ind];
+                count += 1.0;
+            }
+        }
+        sum * (weight / count)
+    }
+
+    fn basic_rasterize_triangle(&mut self, t: &Triangle) {
+        let mut tri = [Vector3::new(t.v[0].x, t.v[0].y, t.v[0].z),
+                       Vector3::new(t.v[1].x, t.v[1].y, t.v[1].z),
+                       Vector3::new(t.v[2].x, t.v[2].y, t.v[2].z)];
+        let xmin: f64 = f64::min(t.v[0].x, f64::min(t.v[1].x, t.v[2].x));
+        let xmax: f64 = f64::max(t.v[0].x, f64::max(t.v[1].x, t.v[2].x));
+        let ymin: f64 = f64::min(t.v[0].y, f64::min(t.v[1].y, t.v[2].y));
+        let ymax: f64 = f64::max(t.v[0].y, f64::max(t.v[1].y, t.v[2].y));
+        let z: f64 = (t.v[0].z + t.v[1].z + t.v[2].z) / 3.0;
+        for x in (xmin as i64)..(xmax as i64) {
+            for y in (ymin as i64)..(ymax as i64) {
+                let ind = self.get_index(x as usize, y as usize);
+                if inside_triangle(x as f64, y as f64, &tri) && z < self.depth_buf[ind] {
+                    self.depth_buf[ind] = z;
+                    self.frame_sample[ind] = t.get_color();
                 }
             }
         }
@@ -217,10 +324,13 @@ fn inside_triangle(x: f64, y: f64, v: &[Vector3<f64>; 3]) -> bool {
 
 fn compute_barycentric2d(x: f64, y: f64, v: &[Vector3<f64>; 3]) -> (f64, f64, f64) {
     let c1 = (x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * y + v[1].x * v[2].y - v[2].x * v[1].y)
-        / (v[0].x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * v[0].y + v[1].x * v[2].y - v[2].x * v[1].y);
+        / (v[0].x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * v[0].y + v[1].x * v[2].y
+            - v[2].x * v[1].y);
     let c2 = (x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * y + v[2].x * v[0].y - v[0].x * v[2].y)
-        / (v[1].x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * v[1].y + v[2].x * v[0].y - v[0].x * v[2].y);
+        / (v[1].x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * v[1].y + v[2].x * v[0].y
+            - v[0].x * v[2].y);
     let c3 = (x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * y + v[0].x * v[1].y - v[1].x * v[0].y)
-        / (v[2].x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * v[2].y + v[0].x * v[1].y - v[1].x * v[0].y);
+        / (v[2].x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * v[2].y + v[0].x * v[1].y
+            - v[1].x * v[0].y);
     (c1, c2, c3)
 }

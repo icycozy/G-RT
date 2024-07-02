@@ -144,7 +144,8 @@ impl Rasterizer {
                             texture: None,
                         };     
                         let color = (self.fragment_shader.unwrap())(&payload);
-                        Self::set_pixel(self.height, self.width, &mut self.frame_buf, &p, &color);
+                        // Self::set_pixel(self.height, self.width, &mut self.frame_buf, &p, &color);
+                        Self::set_pixel(self.height, self.width, &mut self.frame_buf, &p, &t.get_color());
                     }
                 }
             }

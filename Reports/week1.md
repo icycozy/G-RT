@@ -15,7 +15,11 @@
 ![after](2.jpg)
 
 * MSAA抗锯齿化之后三角形边缘会有黑色，应该是用整点标识pixel时的细节实现问题
+* FXAA
 
 ### Task 3
 
 * 一片漆黑。调不出来辣！TAT
+
+github repository: git@github.com:icycozy/G-RT.git
+commit: e0f3916
