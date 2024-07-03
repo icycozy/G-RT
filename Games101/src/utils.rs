@@ -52,7 +52,7 @@ pub(crate) fn get_model_matrix_lab3(rotation_angle: f64) -> M4f {
     scale[(0, 0)] = 2.5;
     scale[(1, 1)] = 2.5;
     scale[(2, 2)] = 2.5;
-    model * scale
+    scale * get_rotation(Vector3::new(0.0,1.0,0.0), 90.0) * model
 }
 
 pub(crate) fn get_projection_matrix(eye_fov: f64, aspect_ratio: f64, z_near: f64, z_far: f64) -> M4f {
@@ -60,7 +60,7 @@ pub(crate) fn get_projection_matrix(eye_fov: f64, aspect_ratio: f64, z_near: f64
     let mut scale: M4f = Matrix4::identity();
     let mut translate: M4f = Matrix4::identity();
     /*  implement your code here  */
-    let top = f64::abs(z_near) * -(eye_fov / 2.0).tan(); // - is because of the inverted y-axis
+    let top = f64::abs(z_near) * (eye_fov / 2.0).tan(); // - is because of the inverted y-axis
     let right = top * aspect_ratio;
     let left = -right;
     let bottom = -top;
@@ -70,17 +70,17 @@ pub(crate) fn get_projection_matrix(eye_fov: f64, aspect_ratio: f64, z_near: f64
     projection[(2, 2)] = z_far + z_near;
     projection[(2, 3)] = -1.0 * z_far * z_near;
     projection[(3, 2)] = 1.0;
+    projection[(3, 3)] = 0.0;
 
     scale[(0, 0)] = 2.0 / (right - left);
     scale[(1, 1)] = 2.0 / (top - bottom);
-    scale[(2, 2)] = 2.0 / (z_near - z_far);
+    scale[(2, 2)] = 2.0 / (z_near - z_far).abs();
 
     translate[(0, 3)] = -1.0 * (right + left) / 2.0;
     translate[(1, 3)] = -1.0 * (top + bottom) / 2.0;
     translate[(2, 3)] = -1.0 * (z_near + z_far) / 2.0;
 
-    scale * projection
-    // scale * translate * projection
+    scale * translate * projection
 }
 
 pub(crate) fn frame_buffer2cv_mat(frame_buffer: &Vec<V3f>) -> Mat {
@@ -133,7 +133,7 @@ pub fn choose_shader_texture(method: &str,
     } else if method == "texture" {
         println!("Rasterizing using the texture shader");
         active_shader = texture_fragment_shader;
-        tex = Some(Texture::new(&(obj_path.to_owned() + "spot_texture.png")));
+        // tex = Some(Texture::new(&(obj_path.to_owned() + "spot_texture.png")));
     } else if method == "phong" {
         println!("Rasterizing using the phong shader");
         active_shader = phong_fragment_shader;
@@ -166,8 +166,10 @@ pub fn normal_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
 pub fn phong_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     // 泛光、漫反射、高光系数
     let ka = Vector3::new(0.005, 0.005, 0.005);
-    let kd = payload.color;
+    let kd = payload.color / 255.0;
     let ks = Vector3::new(0.7937, 0.7937, 0.7937);
+
+    // println!("kd: {:?}", kd);
 
     // 灯光位置和强度
     let l1 = Light {
@@ -211,13 +213,14 @@ pub fn texture_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     let texture_color: Vector3<f64> = match &payload.texture {
         // LAB3 TODO: Get the texture value at the texture coordinates of the current fragment
         // <获取材质颜色信息>
-        Some(texture) => texture.get_color(payload.tex_coords.x, payload.tex_coords.y),
-
         None => Vector3::new(0.0, 0.0, 0.0),
-        Some(texture) => Vector3::new(0.0, 0.0, 0.0), // Do modification here
+        Some(texture) => texture.get_color(payload.tex_coords.x, payload.tex_coords.y) / 255.0,
     };
+
     let kd = texture_color / 255.0; // 材质颜色影响漫反射系数
     let ks = Vector3::new(0.7937, 0.7937, 0.7937);
+
+    // println!("kd: {:?}", kd);
 
     let l1 = Light {
         position: Vector3::new(20.0, 20.0, 20.0),
@@ -251,10 +254,25 @@ pub fn texture_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     result_color * 255.0
 }
 
+fn h(payload: &FragmentShaderPayload, dx: f64, dy: f64) -> f64 {
+    let texture_color: Vector3<f64> = match &payload.texture {
+        None => Vector3::new(0.0, 0.0, 0.0),
+        Some(texture) => texture.get_color(payload.tex_coords.x + dx, payload.tex_coords.y + dy),
+    };
+    texture_color[0] + texture_color[1] + texture_color[2]
+    // (texture_color[0] + texture_color[1] + texture_color[2]) / 3.0
+}
+
 pub fn bump_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     let ka = Vector3::new(0.005, 0.005, 0.005);
-    let kd = payload.color;
+    let kd = payload.color / 255.0; //
     let ks = Vector3::new(0.7937, 0.7937, 0.7937);
+
+    let texture_color: Vector3<f64> = match &payload.texture {
+        None => Vector3::new(0.0, 0.0, 0.0),
+        Some(texture) => texture.get_color(payload.tex_coords.x, payload.tex_coords.y) / 255.0,
+    };
+    let kd = texture_color / 255.0;
 
     let l1 = Light {
         position: Vector3::new(20.0, 20.0, 20.0),
@@ -272,7 +290,7 @@ pub fn bump_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
 
     let normal = payload.normal;
     let point = payload.view_pos;
-    let color = payload.color;
+    // let color = payload.color;
 
     let (kh, kn) = (0.2, 0.1);
 
@@ -286,36 +304,51 @@ pub fn bump_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     // Vector ln = (-dU, -dV, 1)
     // Normal n = normalize(TBN * ln)
 
-    // let t = Vector3::new(normal.x * normal.y / (normal.x.powi(2) + normal.z.powi(2)).sqrt(),
-    //                      (normal.x.powi(2) + normal.z.powi(2)).sqrt(),
-    //                      normal.z * normal.y / (normal.x.powi(2) + normal.z.powi(2)).sqrt());
-    // let b = normal.cross(&t);
-    // let tbn = Matrix3::new(t.x, b.x, normal.x,
-    //                        t.y, b.y, normal.y,
-    //                        t.z, b.z, normal.z);
-    // let dU = kh * kn * (payload.texture.unwrap().get_color(payload.tex_coords.x + 1.0 / payload.texture.unwrap().width as f64, payload.tex_coords.y) - payload.texture.unwrap().get_color(payload.tex_coords.x, payload.tex_coords.y));
-    // let dV = kh * kn * (payload.texture.unwrap().get_color(payload.tex_coords.x, payload.tex_coords.y + 1.0 / payload.texture.unwrap().height as f64) - payload.texture.unwrap().get_color(payload.tex_coords.x, payload.tex_coords.y));
-    // let ln = Vector3::new(-dU, -dV, 1.0);
-    // let new_normal = tbn * ln;
-    // let normal = new_normal.normalize();
+    let n = normal;
+    let t = Vector3::new(n.x * n.y / (n.x.powi(2) + n.z.powi(2)).sqrt(),
+                         (n.x.powi(2) + n.z.powi(2)).sqrt(),
+                         n.z * n.y / (n.x.powi(2) + n.z.powi(2)).sqrt());
+    let b = n.cross(&t);
+    let tbn = Matrix3::new(t.x, b.x, n.x,
+                           t.y, b.y, n.y,
+                           t.z, b.z, n.z);
+    let dU = kh * kn * (h(payload, 1.0 / payload.texture.clone().unwrap().width as f64, 0.0) - h(payload, 0.0, 0.0));
+    let dV = kh * kn * (h(payload, 0.0, 1.0 / payload.texture.clone().unwrap().height as f64) - h(payload, 0.0, 0.0));
+    let ln = Vector3::new(-dU, -dV, 1.0);
+    let normal = tbn * ln;
 
     let mut result_color = Vector3::zeros();
-    result_color = normal;
+    for light in lights {
+        let light_dir = (light.position - point).normalize();
+        let view_dir = (eye_pos - point).normalize();
+        let half_dir = (light_dir + view_dir).normalize();
+        let ambient = amb_light_intensity.component_mul(&ka);
+        let diffuse = light.intensity.component_mul(&kd) * f64::max(0.0, normal.dot(&light_dir));
+        let specular = light.intensity.component_mul(&ks) * f64::max(0.0, normal.dot(&half_dir)).powf(p);
+        result_color += ambient + diffuse + specular;
+    }
+
     result_color * 255.0
 }
 
 pub fn displacement_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     let ka = Vector3::new(0.005, 0.005, 0.005);
-    let kd = payload.color;
+    let kd = payload.color / 255.0;
     let ks = Vector3::new(0.7937, 0.7937, 0.7937);
+
+    let texture_color: Vector3<f64> = match &payload.texture {
+        None => Vector3::new(0.0, 0.0, 0.0),
+        Some(texture) => texture.get_color(payload.tex_coords.x, payload.tex_coords.y) / 255.0,
+    };
+    let kd = texture_color / 255.0;
 
     let l1 = Light {
         position: Vector3::new(20.0, 20.0, 20.0),
-        intensity: Vector3::new(500.0, 500.0, 500.0),
+        intensity: Vector3::new(500.0, 500.0, 500.0), // 10.0 is the intensity factor
     };
     let l2 = Light {
-        position: Vector3::new(-20.0, 20.0, 0.0),
-        intensity: Vector3::new(500.0, 500.0, 500.0),
+        position: Vector3::new(-20.0, 20.0, 0.0) * 3.0,
+        intensity: Vector3::new(500.0, 500.0, 500.0) * 3.0,
     };
     let lights = vec![l1, l2];
     let amb_light_intensity = Vector3::new(10.0, 10.0, 10.0);
@@ -324,8 +357,6 @@ pub fn displacement_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     let p = 150.0;
 
     let normal = payload.normal;
-    let point = payload.view_pos;
-    let color = payload.color;
 
     let (kh, kn) = (0.2, 0.1);
 
@@ -340,20 +371,21 @@ pub fn displacement_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     // Position p = p + kn * n * h(u,v)
     // Normal n = normalize(TBN * ln)
 
-    // let t = Vector3::new(normal.x * normal.y / (normal.x.powi(2) + normal.z.powi(2)).sqrt(),
-    //                      (normal.x.powi(2) + normal.z.powi(2)).sqrt(),
-    //                      normal.z * normal.y / (normal.x.powi(2) + normal.z.powi(2)).sqrt());
-    // let b = normal.cross(&t);
-    // let tbn = Matrix3::new(t.x, b.x, normal.x,
-    //                        t.y, b.y, normal.y,
-    //                        t.z, b.z, normal.z);
-    // let dU = kh * kn * (payload.texture.unwrap().get_color(payload.tex_coords.x + 1.0 / payload.texture.unwrap().width as f64, payload.tex_coords.y) - payload.texture.unwrap().get_color(payload.tex_coords.x, payload.tex_coords.y));
-    // let dV = kh * kn * (payload.texture.unwrap().get_color(payload.tex_coords.x, payload.tex_coords.y + 1.0 / payload.texture.unwrap().height as f64) - payload.texture.unwrap().get_color(payload.tex_coords.x, payload.tex_coords.y));
-    // let ln = Vector3::new(-dU, -dV, 1.0);
-    // let p = p + kn * normal * payload.texture.unwrap().get_color(payload.tex_coords.x, payload.tex_coords.y);
-    // // ?
-    // let new_normal = tbn * ln;
-    // let normal = new_normal.normalize();
+    let n = normal;
+    let t = Vector3::new(n.x * n.y / (n.x.powi(2) + n.z.powi(2)).sqrt(),
+                         (n.x.powi(2) + n.z.powi(2)).sqrt(),
+                         n.z * n.y / (n.x.powi(2) + n.z.powi(2)).sqrt());
+    let b = n.cross(&t);
+    let tbn = Matrix3::new(t.x, b.x, n.x,
+                           t.y, b.y, n.y,
+                           t.z, b.z, n.z);
+    let dU = kh * kn * (h(payload, 1.0 / payload.texture.clone().unwrap().width as f64, 0.0) - h(payload, 0.0, 0.0));
+    let dV = kh * kn * (h(payload, 0.0, 1.0 / payload.texture.clone().unwrap().height as f64) - h(payload, 0.0, 0.0)); 
+    let ln = Vector3::new(-dU, -dV, 1.0);
+    let position = payload.view_pos + kn * normal * h(payload, 0.0, 0.0) * 0.5;
+    let normal = tbn * ln;
+
+    let point = position;
 
     let mut result_color = Vector3::zeros();
     for light in lights {

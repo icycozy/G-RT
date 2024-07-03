@@ -107,45 +107,44 @@ impl Rasterizer {
         }
     }
 
-    pub fn rasterize_triangle(&mut self, t: &Triangle, mvp: Matrix4<f64>) {
-        // Transform triangle vertices by the MVP matrix
-        let transformed_vertices = t.v.iter().map(|v| mvp * v).collect::<Vec<_>>(); // ?
-        println!("transformed_vertices: {:?}", transformed_vertices);
+    pub fn rasterize_triangle(&mut self, triangle: &Triangle, mvp: Matrix4<f64>) {
+        let (t, view_pos) = Rasterizer::get_new_tri(
+            &triangle, 
+            self.view, 
+            self.model, 
+            mvp, 
+            (self.width, self.height),
+        ); 
 
-        // Convert vertices from 4D to 3D by dividing by w component
-        let screen_space_vertices = [
-            Vector3::new(transformed_vertices[0].x, transformed_vertices[0].y, transformed_vertices[0].z),
-            Vector3::new(transformed_vertices[1].x, transformed_vertices[1].y, transformed_vertices[1].z),
-            Vector3::new(transformed_vertices[2].x, transformed_vertices[2].y, transformed_vertices[2].z)];
+        let xmin: f64 = f64::min(t.v[0].x, f64::min(t.v[1].x, t.v[2].x));
+        let xmax: f64 = f64::max(t.v[0].x, f64::max(t.v[1].x, t.v[2].x));
+        let ymin: f64 = f64::min(t.v[0].y, f64::min(t.v[1].y, t.v[2].y));
+        let ymax: f64 = f64::max(t.v[0].y, f64::max(t.v[1].y, t.v[2].y));   
+        let z = t.v[0].z; 
 
-        // Compute bounding box of the triangle in screen space
-        let xmin = screen_space_vertices.iter().map(|v| v.x).fold(f64::INFINITY, f64::min).floor() as i64;
-        let xmax = screen_space_vertices.iter().map(|v| v.x).fold(f64::NEG_INFINITY, f64::max).ceil() as i64;
-        let ymin = screen_space_vertices.iter().map(|v| v.y).fold(f64::INFINITY, f64::min).floor() as i64;
-        let ymax = screen_space_vertices.iter().map(|v| v.y).fold(f64::NEG_INFINITY, f64::max).ceil() as i64;
-        
         // Iterate over each pixel in the bounding box
-        for x in xmin..=xmax {
-            for y in ymin..=ymax {
-                // Check if the point is inside the triangle
+        for x in xmin as i64..= xmax as i64 {
+            for y in ymin as i64..=ymax as i64 {
                 if inside_triangle(x as f64, y as f64, &t.v) {
-                    let c = compute_barycentric2d(x as f64, y as f64, &t.v);
-                    let z = c.0 * t.v[0].z + c.1 * t.v[1].z + c.2 * t.v[2].z;
                     let p = Vector3::new(x as f64, y as f64, 1.0);
                     let ind = Self::get_index(self.height, self.width, x as usize, y as usize);
-                    // Update the pixel if it's closer to the camera than the previous pixel
-                    if z < self.depth_buf[ind] {
-                        self.depth_buf[ind] = z; 
+                    if z < self.depth_buf[ind] {       
+                        let c = compute_barycentric2d(x as f64, y as f64, &t.v);
+                        let interpolated_pos = Self::interpolate_vec3(c.0, c.1, c.2, view_pos[0], view_pos[1], view_pos[2], 1.0);
+                        let interpolated_color = Self::interpolate_vec3(c.0, c.1, c.2, t.color[0], t.color[1], t.color[2], 1.0);
+                        let interpolated_normal = Self::interpolate_vec3(c.0, c.1, c.2, t.normal[0], t.normal[1], t.normal[2], 1.0);  
+                        let interpolated_tex_coords = Self::interpolate_vec2(c.0, c.1, c.2, t.tex_coords[0], t.tex_coords[1], t.tex_coords[2], 1.0);   
                         let payload = FragmentShaderPayload {
-                            view_pos: Vector3::zeros(),
-                            color: Vector3::zeros(),
-                            normal: Vector3::new(x as f64, y as f64, 1.0),
-                            tex_coords: Vector2::new(x as f64, y as f64),
-                            texture: None,
+                            view_pos: interpolated_pos,
+                            color: interpolated_color,
+                            normal: interpolated_normal,
+                            tex_coords: interpolated_tex_coords,
+                            texture: self.texture.as_ref().map(|tex| Rc::new(tex)),
                         };     
                         let color = (self.fragment_shader.unwrap())(&payload);
-                        // Self::set_pixel(self.height, self.width, &mut self.frame_buf, &p, &color);
-                        Self::set_pixel(self.height, self.width, &mut self.frame_buf, &p, &t.get_color());
+
+                        self.depth_buf[ind] = z; 
+                        Self::set_pixel(self.height, self.width, &mut self.frame_buf, &p, &color);
                     }
                 }
             }
@@ -200,7 +199,6 @@ impl Rasterizer {
     pub fn frame_buffer(&self) -> &Vec<Vector3<f64>> {
         &self.frame_buf
     }
-
 }
 
 fn to_vec4(v3: Vector3<f64>, w: Option<f64>) -> Vector4<f64> {
