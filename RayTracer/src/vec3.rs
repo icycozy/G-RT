@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Sub, Mul, MulAssign};
+use std::ops::{AddAssign, MulAssign};
 
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub struct Vec3 {
@@ -55,12 +55,16 @@ impl Vec3 {
         }
     }
 
-    pub fn cross(a: Self, b: Self) -> Self {
+    pub fn cross(&self, b: Self) -> Self {
         Self {
-            x: a.y * b.z - a.z * b.y,
-            y: a.z * b.x - a.x * b.z,
-            z: a.x * b.y - a.y * b.x,
+            x: self.y * b.z - self.z * b.y,
+            y: self.z * b.x - self.x * b.z,
+            z: self.x * b.y - self.y * b.x,
         }
+    }
+
+    pub fn dot(&self, b: Self) -> f64 {
+        self.x * b.x + self.y * b.y + self.z * b.z
     }
 }
 
