@@ -37,8 +37,11 @@ impl Ray {
     pub fn ray_color(&self, world: &HittableList) -> Vec3 {
         let mut rec = HitRecord::default();
         if world.hit(&self, Interval::with_values(0.0, INFINITY), &mut rec) {
-            let c = 0.5 * (rec.normal + Vec3::new(1.0, 1.0, 1.0));
-            return c
+            // let c = 0.5 * (rec.normal + Vec3::new(1.0, 1.0, 1.0));
+            // return c
+            let direction = rec.normal.random_on_hemisphere();
+            let r = Ray::new(rec.p, direction);
+            return r.ray_color(&world) * 0.5
         }
 
         let unit_direction = self.direction().unit();

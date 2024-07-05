@@ -17,6 +17,7 @@ pub struct Camera {
     pixel_delta_v: Vec3, // Offset to pixel below
     samples_per_pixel: u32,
     pixel_samples_scale: f64,
+    max_depth: u32,
 }
 
 const AUTHOR: &str = "name";
@@ -60,6 +61,7 @@ impl Camera {
             pixel_delta_v,
             samples_per_pixel,
             pixel_samples_scale: 1.0 / (samples_per_pixel as f64), 
+            max_depth : 10,
         }
     }
 

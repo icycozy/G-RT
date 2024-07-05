@@ -1,4 +1,5 @@
 use std::ops::{AddAssign, MulAssign};
+use crate::rtweekend::random_double;
 
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub struct Vec3 {
@@ -52,6 +53,35 @@ impl Vec3 {
             x: self.x / self.length(),
             y: self.y / self.length(),
             z: self.z / self.length(),
+        }
+    }
+
+    pub fn random(min: f64, max: f64) -> Self {
+        Self {
+            x: random_double(min, max),
+            y: random_double(min, max),
+            z: random_double(min, max),
+        }
+    }
+
+    pub fn random_in_unit_sphere() -> Vec3 {
+        loop {
+            let p = Vec3::random(-1.0, 1.0);
+            if p.squared_length() < 1.0 {
+                return p;
+            }
+        }
+    }
+    pub fn random_unit_vector() -> Vec3 {
+        Vec3::random_in_unit_sphere().unit()
+    }
+
+    pub fn random_on_hemisphere(&self) -> Vec3 {
+        let on_unit_sphere = Vec3::random_unit_vector();
+        if self.dot(on_unit_sphere) > 0.0 {
+            on_unit_sphere
+        } else {
+            on_unit_sphere * -1.0
         }
     }
 
