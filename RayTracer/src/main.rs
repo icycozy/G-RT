@@ -7,6 +7,7 @@ mod hit_list;
 mod rtweekend;
 mod interval;
 mod camera;
+mod material;
 
 use vec3::Vec3;
 type Point3 = Vec3;

@@ -34,14 +34,15 @@ impl Ray {
 }
 
 impl Ray {
-    pub fn ray_color(&self, world: &HittableList) -> Vec3 {
+    pub fn ray_color(&self, depth: u32, world: &HittableList) -> Vec3 {
+        if depth <= 0 {
+            return Vec3::zero();
+        }
         let mut rec = HitRecord::default();
-        if world.hit(&self, Interval::with_values(0.0, INFINITY), &mut rec) {
-            // let c = 0.5 * (rec.normal + Vec3::new(1.0, 1.0, 1.0));
-            // return c
-            let direction = rec.normal.random_on_hemisphere();
+        if world.hit(&self, Interval::with_values(0.001, INFINITY), &mut rec) {
+            let direction = rec.normal + Vec3::random_unit_vector();
             let r = Ray::new(rec.p, direction);
-            return r.ray_color(&world) * 0.5
+            return r.ray_color(depth - 1, &world) * 0.1;
         }
 
         let unit_direction = self.direction().unit();
