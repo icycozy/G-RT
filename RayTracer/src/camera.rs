@@ -103,7 +103,7 @@ impl Camera {
     pub fn render(&mut self, world: &HittableList) {
         self.initialize();
 
-        let path = "output/defocus_blur.jpg";
+        let path = "output/test.jpg";
         let quality = 60;
 
         let bar: ProgressBar = if is_ci() {
