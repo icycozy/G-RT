@@ -37,14 +37,14 @@ impl Ray {
     pub fn ray_color(&self, world: &HittableList) -> Vec3 {
         let mut rec = HitRecord::default();
         if world.hit(&self, Interval::with_values(0.0, INFINITY), &mut rec) {
-            let c = 0.5 * (rec.normal + Vec3::new(1.0, 1.0, 1.0)) * 255.0;
+            let c = 0.5 * (rec.normal + Vec3::new(1.0, 1.0, 1.0));
             return c
         }
 
         let unit_direction = self.direction().unit();
         let a = 0.5 * (unit_direction.y() + 1.0);
-        let white = Vec3::new(1.0, 1.0, 1.0) * 255.0;
-        let blue = Vec3::new(0.5, 0.7, 1.0) * 255.0;
+        let white = Vec3::new(1.0, 1.0, 1.0);
+        let blue = Vec3::new(0.5, 0.7, 1.0);
         let c = white * (1.0 - a) + blue * a;
         c
     }

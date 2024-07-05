@@ -49,7 +49,8 @@ impl Camera {
             - viewport_v / 2.0;
         let pixel00_loc = viewport_upper_left + (pixel_delta_u.clone() + pixel_delta_v.clone()) * 0.5;
 
-        let samples_per_pixel = 10;
+        let samples_per_pixel = 100;
+
         Camera {
             image_width,
             image_height,
@@ -78,19 +79,14 @@ impl Camera {
 
         for i in 0..self.image_height {
             for j in 0..self.image_width {
-                let pixel_center = self.pixel00_loc.clone() + (i as f64 * self.pixel_delta_u.clone()) + (j as f64 * self.pixel_delta_v.clone());
-                let ray_direction = pixel_center - self.center.clone();
-                let r = Ray::new(self.center.clone(), ray_direction);
-                let pixel_color = r.ray_color(&world);
-
-                // let mut pixel_color = Vec3::new(0.0, 0.0, 0.0);
-                // for sample in 0..self.samples_per_pixel {
-                //     let r = self.get_ray(i, j);
-                //     pixel_color = pixel_color + r.ray_color(&world);
-                // }
-                // pixel_color = pixel_color * self.pixel_samples_scale;
+                let mut pixel_color = Vec3::new(0.0, 0.0, 0.0);
+                for sample in 0..self.samples_per_pixel {
+                    let r = self.get_ray(i, j);
+                    pixel_color = pixel_color + r.ray_color(&world);
+                }
+                pixel_color = pixel_color * self.pixel_samples_scale;
                 
-                write_color([pixel_color.x() as u8, pixel_color.y() as u8, pixel_color.z() as u8], &mut img, i as usize, j as usize);
+                write_color(pixel_color, &mut img, i as usize, j as usize);
                 bar.inc(1);
             }
         }
