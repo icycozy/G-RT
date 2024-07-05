@@ -38,11 +38,20 @@ impl Ray {
         if depth <= 0 {
             return Vec3::zero();
         }
+        
+        // let mut rec = HitRecord::default();
+        // if world.hit(&self, Interval::with_values(0.001, INFINITY), &mut rec) {
+        //     let direction = rec.normal + Vec3::random_unit_vector();
+        //     let r = Ray::new(rec.p, direction);
+        //     return r.ray_color(depth - 1, &world) * 0.1;
+        // }
+
         let mut rec = HitRecord::default();
         if world.hit(&self, Interval::with_values(0.001, INFINITY), &mut rec) {
-            let direction = rec.normal + Vec3::random_unit_vector();
-            let r = Ray::new(rec.p, direction);
-            return r.ray_color(depth - 1, &world) * 0.1;
+            if let Some((attenuation, scattered)) = rec.mat.as_ref().unwrap().scatter(&self, &rec) {
+                return attenuation * scattered.ray_color(depth - 1, world);
+            }
+            return Vec3::zero();
         }
 
         let unit_direction = self.direction().unit();

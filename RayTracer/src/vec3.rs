@@ -96,6 +96,32 @@ impl Vec3 {
     pub fn dot(&self, b: Self) -> f64 {
         self.x * b.x + self.y * b.y + self.z * b.z
     }
+
+    pub fn near_zero(&self) -> bool {
+        // Return true if the vector is close to zero in all dimensions.
+        let s = 1e-8;
+        (self.x.abs() < s) && (self.y.abs() < s) && (self.z.abs() < s)
+    }
+
+    pub fn reflect(&self, n: Vec3) -> Vec3 {
+        self.clone() - 2.0 * self.clone().dot(n) * n
+    }
+
+    pub fn refract(&self, n: Vec3, etai_over_etat: f64) -> Vec3 {
+        let cos_theta = (-1.0 * self.clone()).dot(n).min(1.0);
+        let r_out_perp = etai_over_etat * (self.clone() + cos_theta * n);
+        let r_out_parallel = -((1.0 - r_out_perp.squared_length()).abs().sqrt()) * n;
+        r_out_perp + r_out_parallel
+    }
+
+    pub fn random_in_unit_disk() -> Vec3 {
+        loop {
+            let p = Vec3::new(random_double(-1.0, 1.0), random_double(-1.0, 1.0), 0.0);
+            if p.squared_length() < 1.0 {
+                return p;
+            }
+        }
+    }
 }
 
 impl std::ops::Add for Vec3 {
@@ -186,14 +212,6 @@ impl std::ops::Sub<f64> for Vec3 {
 //     }
 // }
 
-
-impl std::ops::Mul for Vec3 {
-    type Output = f64;
-    fn mul(self, other: Self) -> f64 {
-        self.x * other.x + self.y * other.y + self.z * other.z
-    }
-}
-
 impl std::ops::Mul<f64> for Vec3 {
     type Output = Self;
     fn mul(self, other: f64) -> Self {
@@ -211,6 +229,16 @@ impl std::ops::Mul<Vec3> for f64 {
             x: self * other.x,
             y: self * other.y,
             z: self * other.z,
+        }
+    }
+}
+impl std::ops::Mul<Vec3> for Vec3 {
+    type Output = Vec3;
+    fn mul(self, other: Vec3) -> Vec3 {
+        Vec3 {
+            x: self.x * other.x,
+            y: self.y * other.y,
+            z: self.z * other.z,
         }
     }
 }

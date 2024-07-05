@@ -15,9 +15,20 @@ pub struct Camera {
     pixel00_loc: Point3,// Location of pixel 0, 0
     pixel_delta_u: Vec3, // Offset to pixel to the right
     pixel_delta_v: Vec3, // Offset to pixel below
-    samples_per_pixel: u32,
+    pub samples_per_pixel: u32,
     pixel_samples_scale: f64,
-    max_depth: u32,
+    pub max_depth: u32,
+    pub vfov: f64, // Vertical view angle (field of view)
+    pub lookfrom: Point3, // Point camera is looking from
+    pub lookat: Point3, // Point camera is looking at
+    pub vup: Vec3, // Camera-relative "up" direction
+    u: Vec3,
+    v: Vec3,
+    w: Vec3,
+    pub defocus_angle: f64,
+    pub focus_dist: f64,
+    defocus_disk_u: Vec3,
+    defocus_disk_v: Vec3,
 }
 
 const AUTHOR: &str = "name";
@@ -28,45 +39,67 @@ pub fn is_ci() -> bool {
 
 impl Camera {
     pub fn new(image_height: u32, image_width: u32) -> Self {
-        let center = Point3::new(0.0, 0.0, 0.0);
-
-        // Determine viewport dimensions.
-        let focal_length = 1.0;
-        let viewport_height = 2.0;
-        let viewport_width = viewport_height * (image_width as f64 / image_height as f64);
-
-        // Calculate the vectors across the horizontal and down the vertical viewport edges.
-        let viewport_u = Vec3::new(viewport_width, 0.0, 0.0);
-        let viewport_v = Vec3::new(0.0, -viewport_height, 0.0);
-
-        // Calculate the horizontal and vertical delta vectors from pixel to pixel.
-        let pixel_delta_u = viewport_u / image_width as f64;
-        let pixel_delta_v = viewport_v / image_height as f64;
-
-        // Calculate the location of the upper left pixel.
-        let viewport_upper_left = center.clone()
-            - Vec3::new(0.0, 0.0, focal_length)
-            - viewport_u / 2.0
-            - viewport_v / 2.0;
-        let pixel00_loc = viewport_upper_left + (pixel_delta_u.clone() + pixel_delta_v.clone()) * 0.5;
-
-        let samples_per_pixel = 100;
-
         Camera {
             image_width,
             image_height,
-            center,
-            pixel00_loc,
-            pixel_delta_u,
-            pixel_delta_v,
-            samples_per_pixel,
-            pixel_samples_scale: 1.0 / (samples_per_pixel as f64), 
-            max_depth : 50,
+            center: Point3::new(0.0, 0.0, 0.0),
+            pixel00_loc: Point3::new(0.0, 0.0, 0.0),
+            pixel_delta_u: Vec3::new(0.0, 0.0, 0.0),
+            pixel_delta_v: Vec3::new(0.0, 0.0, 0.0),
+            samples_per_pixel: 10,
+            pixel_samples_scale: 1.0 / 10.0, 
+            max_depth : 10,
+            vfov: 90.0,
+            lookfrom: Point3::new(0.0, 0.0, 0.0),
+            lookat: Point3::new(0.0, 0.0, -1.0),
+            vup: Vec3::new(0.0, 1.0, 0.0),
+            u: Vec3::new(0.0, 0.0, 0.0),
+            v: Vec3::new(0.0, 0.0, 0.0),
+            w: Vec3::new(0.0, 0.0, 0.0),
+            defocus_angle: 0.0,
+            focus_dist: 10.0,
+            defocus_disk_u: Vec3::new(0.0, 0.0, 0.0),
+            defocus_disk_v: Vec3::new(0.0, 0.0, 0.0),
         }
     }
 
-    pub fn render(&self, world: &HittableList) {
-        let path = "output/test.jpg";
+    pub fn initialize(&mut self) {
+        let center = self.lookfrom.clone();
+
+        // Determine viewport dimensions.
+        let focal_length = (self.lookfrom - self.lookat).length();
+        let theta = self.vfov.to_radians();
+        let h = (theta / 2.0).tan();
+        let viewport_height = 2.0 * h * focal_length;
+        let viewport_width = viewport_height * (self.image_width as f64 / self.image_height as f64);
+
+        self.w = (self.lookfrom - self.lookat).unit();
+        self.u = self.vup.cross(self.w).unit();
+        self.v = self.w.cross(self.u);
+
+        // Calculate the vectors across the horizontal and down the vertical viewport edges.
+        let viewport_u = self.u * viewport_width;
+        let viewport_v = -1.0 * self.v * viewport_height;
+
+        // Calculate the horizontal and vertical delta vectors from pixel to pixel.
+        let pixel_delta_u = viewport_u / self.image_width as f64;
+        let pixel_delta_v = viewport_v / self.image_height as f64;
+
+        // Calculate the location of the upper left pixel.
+        let viewport_upper_left = center - (focal_length * self.w) - (viewport_u / 2.0) - (viewport_v / 2.0);
+        let pixel00_loc = viewport_upper_left + (pixel_delta_u.clone() + pixel_delta_v.clone()) * 0.5;
+
+        self.center = center;
+        self.pixel00_loc = pixel00_loc;
+        self.pixel_delta_u = pixel_delta_u;
+        self.pixel_delta_v = pixel_delta_v;
+        self.pixel_samples_scale = 1.0 / self.samples_per_pixel as f64;
+    }
+
+    pub fn render(&mut self, world: &HittableList) {
+        self.initialize();
+
+        let path = "output/positionable_camera.jpg";
         let quality = 60;
 
         let bar: ProgressBar = if is_ci() {
