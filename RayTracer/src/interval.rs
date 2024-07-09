@@ -1,3 +1,4 @@
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Interval {
     pub min: f64,
     pub max: f64,
@@ -12,6 +13,13 @@ impl Interval {
     }
 
     pub fn with_values(min: f64, max: f64) -> Self {
+        Interval { min, max }
+    }
+
+    pub fn from_intervals(a: Interval, b: Interval) -> Interval {
+        // Create the interval tightly enclosing the two input intervals.
+        let min = if a.min <= b.min { a.min } else { b.min };
+        let max = if a.max >= b.max { a.max } else { b.max };
         Interval { min, max }
     }
 
@@ -35,6 +43,11 @@ impl Interval {
         } else {
             x
         }
+    }
+
+    pub fn expand(&self, delta: f64) -> Interval {
+        let padding = delta / 2.0;
+        Interval::with_values(self.min - padding, self.max + padding)
     }
 }
 

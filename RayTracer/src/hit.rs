@@ -4,12 +4,15 @@ type Point3 = Vec3;
 use crate::interval::Interval;
 use crate::material::Material;
 use std::rc::Rc;
+use crate::aabb::AABB;
 
 #[derive(Clone)]
 pub struct HitRecord {
     pub p: Point3,
     pub normal: Vec3,
     pub t: f64,
+    pub u: f64,
+    pub v: f64,
     pub front_face: bool,
     pub mat: Option<Rc<dyn Material>>,
 }
@@ -20,6 +23,8 @@ impl Default for HitRecord {
             p: Vec3::zero(),
             normal: Vec3::zero(),
             t: 0.0,
+            u: 0.0,
+            v: 0.0,
             front_face: false,
             mat: None,
         }
@@ -39,6 +44,19 @@ impl HitRecord {
     }
 }
 
-pub trait Hittable {
-    fn hit(&self, r: &Ray, ray_t: Interval, rec: &mut HitRecord) -> bool;
+
+
+pub trait HittableClone {
+    fn clone_box(&self) -> Box<dyn Hittable>;
 }
+pub trait Hittable: HittableClone {
+    fn hit(&self, r: &Ray, ray_t: Interval, rec: &mut HitRecord) -> bool;
+    fn bounding_box(&self) -> AABB;
+}
+
+impl Clone for Box<dyn Hittable> {
+    fn clone(&self) -> Box<dyn Hittable> {
+        self.clone_box()
+    }
+}
+

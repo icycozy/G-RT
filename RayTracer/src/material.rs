@@ -3,6 +3,7 @@ use crate::ray::Ray;
 use crate::vec3::Vec3;
 type Color = Vec3;
 use crate::rtweekend::random_double;
+use crate::texture::{Texture, SolidColor, CheckerTexture};
 
 pub trait Material {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>;
@@ -10,11 +11,21 @@ pub trait Material {
 
 pub struct Lambertian {
     albedo: Color,
+    tex: Box<dyn Texture>,
 }
 
 impl Lambertian {
     pub fn new(albedo: Color) -> Self {
-        Lambertian { albedo }
+        Lambertian {
+            albedo,
+            tex: Box::new(SolidColor::new(albedo)),
+        }
+    }
+    pub fn with_texture(tex: Box<dyn Texture>) -> Self {
+        Lambertian {
+            albedo: Color::new(0.0, 0.0, 0.0), // Placeholder value, replace with desired albedo
+            tex,
+        }
     }
 }
 
@@ -27,8 +38,8 @@ impl Material for Lambertian {
             scatter_direction = rec.normal;
         }
 
-        let scattered = Ray::new(rec.p, scatter_direction);
-        let attenuation = self.albedo;
+        let scattered = Ray::new(rec.p, scatter_direction, _r_in.time());
+        let attenuation = self.tex.value(rec.u, rec.v, &rec.p);
         Some((attenuation, scattered))
     }
 }
@@ -51,7 +62,7 @@ impl Material for Metal {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
         let reflected = _r_in.direction().reflect(rec.normal);
         let reflected = reflected.unit() + (self.fuzz * Vec3::random_unit_vector());
-        let scattered = Ray::new(rec.p, reflected);
+        let scattered = Ray::new(rec.p, reflected, _r_in.time());
         let attenuation = self.albedo;
         if scattered.direction().dot(rec.normal) > 0.0 {
             Some((attenuation, scattered))
@@ -95,7 +106,7 @@ impl Material for Dielectric {
         } else {
             direction = unit_direction.refract(rec.normal, ri);
         }
-        let scattered = Ray::new(rec.p, direction);
+        let scattered = Ray::new(rec.p, direction, r_in.time());
         Some((attenuation, scattered))
     }
 }
