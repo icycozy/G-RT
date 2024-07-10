@@ -7,6 +7,7 @@ use indicatif::ProgressBar;
 use image::{ImageBuffer, RgbImage};
 use std::fs::File;
 use crate::rtweekend::random_double;
+type Color = Vec3;
 
 pub struct Camera {
     image_width: u32,   // Rendered image width in pixel count
@@ -29,6 +30,7 @@ pub struct Camera {
     pub focus_dist: f64,
     defocus_disk_u: Vec3,
     defocus_disk_v: Vec3,
+    pub background: Color,
 }
 
 const AUTHOR: &str = "name";
@@ -60,6 +62,7 @@ impl Camera {
             focus_dist: 10.0,
             defocus_disk_u: Vec3::new(0.0, 0.0, 0.0),
             defocus_disk_v: Vec3::new(0.0, 0.0, 0.0),
+            background: Color::new(0.0, 0.0, 0.0),
         }
     }
 

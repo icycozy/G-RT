@@ -2,6 +2,7 @@ use crate::interval::Interval;
 use crate::vec3::Vec3;
 type Color = Vec3;
 use crate::rtw::RtwImage;
+use crate::perlin::Perlin;
 
 pub trait TextureClone {
     fn clone_box(&self) -> Box<dyn Texture>;
@@ -133,6 +134,40 @@ impl Texture for ImageTexture {
 }
 
 impl TextureClone for ImageTexture {
+    fn clone_box(&self) -> Box<dyn Texture> {
+        Box::new(self.clone())
+    }
+}
+
+#[derive(Clone)]
+pub struct NoiseTexture {
+    noise: Perlin,
+    scale: f64,
+}
+
+impl NoiseTexture {
+    pub fn new() -> Self {
+        NoiseTexture {
+            noise: Perlin::new(),
+            scale: 1.0,
+        }
+    }
+    pub fn with_scale(scale: f64) -> Self {
+        NoiseTexture {
+            noise: Perlin::new(),
+            scale,
+        }
+    }
+}
+
+impl Texture for NoiseTexture {
+    fn value(&self, u: f64, v: f64, p: &Vec3) -> Color {
+        // Color::new(1.0, 1.0, 1.0) * 0.5 * (1.0 + self.noise.noise(&(self.scale * *p)))
+        Color::new(0.5, 0.5, 0.5) * (1.0 + (self.scale * p.z() + 10.0 * self.noise.turb(p, 7)).sin())
+    }
+}
+
+impl TextureClone for NoiseTexture {
     fn clone_box(&self) -> Box<dyn Texture> {
         Box::new(self.clone())
     }

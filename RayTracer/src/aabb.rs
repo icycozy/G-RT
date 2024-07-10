@@ -21,7 +21,9 @@ impl AABB {
     }
 
     pub fn from_intervals(x: Interval, y: Interval, z: Interval) -> Self {
-        AABB { x, y, z }
+        let mut new = AABB { x, y, z };
+        new.pad_to_minimums();
+        new
     }
 
     pub fn from_points(a: Point3, b: Point3) -> Self {
@@ -43,7 +45,9 @@ impl AABB {
             Interval::with_values(b.z, a.z)
         };
 
-        AABB { x, y, z }
+        let mut new = AABB { x, y, z };
+        new.pad_to_minimums();
+        new
     }
 
     pub fn from_aabbs(box0: &AABB, box1: &AABB) -> Self {
@@ -121,6 +125,21 @@ impl AABB {
             } else {
                 2
             }
+        }
+    }
+
+    fn pad_to_minimums(&mut self) {
+        // Adjust the AABB so that no side is narrower than some delta, padding if necessary.
+
+        let delta = 0.0001;
+        if self.x.size() < delta {
+            self.x = self.x.expand(delta);
+        }
+        if self.y.size() < delta {
+            self.y = self.y.expand(delta);
+        }
+        if self.z.size() < delta {
+            self.z = self.z.expand(delta);
         }
     }
 }

@@ -111,3 +111,28 @@ impl Material for Dielectric {
     }
 }
 
+
+pub struct DiffuseLight {
+    tex: Box<dyn Texture>,
+}
+
+impl DiffuseLight {
+    pub fn new(tex: Box<dyn Texture>) -> Self {
+        DiffuseLight { tex }
+    }
+    pub fn with_color(color: Color) -> Self {
+        DiffuseLight {
+            tex: Box::new(SolidColor::new(color)),
+        }
+    }
+    fn emitted(&self, u: f64, v: f64, p: &Vec3) -> Color {
+        self.tex.value(u, v, p)
+    }
+}
+
+impl Material for DiffuseLight {
+    fn scatter(&self, _r_in: &Ray, _rec: &HitRecord) -> Option<(Color, Ray)> {
+        None
+    }
+}
+
