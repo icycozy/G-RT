@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::hit::HitRecord;
 use crate::ray::Ray;
 use crate::vec3::Vec3;
@@ -5,8 +7,12 @@ type Color = Vec3;
 use crate::rtweekend::random_double;
 use crate::texture::{Texture, SolidColor, CheckerTexture};
 
-pub trait Material {
+pub trait Material: Any {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>;
+    fn emitted(&self, _u: f64, _v: f64, _p: &Vec3) -> Color {
+        Color::zero()
+    }
+    fn as_any(&self) -> &dyn Any;
 }
 
 pub struct Lambertian {
@@ -42,6 +48,9 @@ impl Material for Lambertian {
         let attenuation = self.tex.value(rec.u, rec.v, &rec.p);
         Some((attenuation, scattered))
     }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 pub struct Metal {
@@ -69,6 +78,9 @@ impl Material for Metal {
         } else {
             None
         }
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -109,9 +121,12 @@ impl Material for Dielectric {
         let scattered = Ray::new(rec.p, direction, r_in.time());
         Some((attenuation, scattered))
     }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
-
+#[derive(Clone)]
 pub struct DiffuseLight {
     tex: Box<dyn Texture>,
 }
@@ -125,14 +140,45 @@ impl DiffuseLight {
             tex: Box::new(SolidColor::new(color)),
         }
     }
-    fn emitted(&self, u: f64, v: f64, p: &Vec3) -> Color {
-        self.tex.value(u, v, p)
-    }
 }
 
 impl Material for DiffuseLight {
     fn scatter(&self, _r_in: &Ray, _rec: &HitRecord) -> Option<(Color, Ray)> {
         None
     }
+    fn emitted(&self, u: f64, v: f64, p: &Vec3) -> Color {
+        self.tex.value(u, v, p)
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
+#[derive(Clone)]
+pub struct Isotropic {
+    tex: Box<dyn Texture>,
+}
+
+impl Isotropic {
+    pub fn new(albedo: Color) -> Self {
+        Isotropic {
+            tex: Box::new(SolidColor::new(albedo)),
+        }
+    }
+    pub fn with_texture(tex: Box<dyn Texture>) -> Self {
+        Isotropic {
+            tex,
+        }
+    }
+}
+
+impl Material for Isotropic {
+    fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
+        let scattered = Ray::new(rec.p, Vec3::random_unit_vector(), _r_in.time());
+        let attenuation = self.tex.value(rec.u, rec.v, &rec.p);
+        Some((attenuation, scattered))
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}

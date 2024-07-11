@@ -124,7 +124,7 @@ impl Camera {
                 let mut pixel_color = Vec3::new(0.0, 0.0, 0.0);
                 for sample in 0..self.samples_per_pixel {
                     let r = self.get_ray(i, j);
-                    pixel_color = pixel_color + r.ray_color(self.max_depth, &world);
+                    pixel_color = pixel_color + r.ray_color(self.background, self.max_depth, &world);
                 }
                 pixel_color = pixel_color * self.pixel_samples_scale;
                 

@@ -40,7 +40,7 @@ impl Ray {
 }
 
 impl Ray {
-    pub fn ray_color(&self, depth: u32, world: &HittableList) -> Vec3 {
+    pub fn ray_color(&self, background: Vec3, depth: u32, world: &HittableList) -> Vec3 {
         if depth <= 0 {
             return Vec3::zero();
         }
@@ -54,17 +54,15 @@ impl Ray {
 
         let mut rec = HitRecord::default();
         if world.hit(&self, Interval::with_values(0.001, INFINITY), &mut rec) {
-            if let Some((attenuation, scattered)) = rec.mat.as_ref().unwrap().scatter(&self, &rec) {
-                return attenuation * scattered.ray_color(depth - 1, world);
+            if let Some(mat) = rec.mat.as_ref() {
+                let color_from_emission = mat.emitted(rec.u, rec.v, &rec.p);
+                if let Some((attenuation, scattered)) = mat.scatter(&self, &rec) {
+                    return attenuation * scattered.ray_color(background, depth - 1, world) + color_from_emission;
+                }
+                return color_from_emission;
             }
-            return Vec3::zero();
         }
 
-        let unit_direction = self.direction().unit();
-        let a = 0.5 * (unit_direction.y() + 1.0);
-        let white = Vec3::new(1.0, 1.0, 1.0);
-        let blue = Vec3::new(0.5, 0.7, 1.0);
-        let c = white * (1.0 - a) + blue * a;
-        c
+        background
     }
 }

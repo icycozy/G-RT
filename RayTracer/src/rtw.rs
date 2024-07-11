@@ -51,16 +51,11 @@ impl RtwImage {
             format!("../../../../../../images/{}", image_filename),
         ];
 
-        // for path in paths.iter() {
-        //     if image.load(path) {
-        //         println!("Loaded image from {}", path);
-        //         return image;
-        //     }
-        // }
-
-        let path = format!("images/1.jpg");
-        if image.load(&path) {
-            return image;
+        for path in paths.iter() {
+            if image.load(path) {
+                println!("Loaded image from {}", path);
+                return image;
+            }
         }
 
         image

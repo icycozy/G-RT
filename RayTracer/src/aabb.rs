@@ -1,14 +1,13 @@
 use crate::interval::Interval;
 use crate::vec3::Vec3;
 type Point3 = Vec3;
-use crate::rtweekend;
 use crate::ray::Ray;
 
 #[derive(Clone, Copy)]
 pub struct AABB {
-    x: Interval,
-    y: Interval,
-    z: Interval,
+    pub x: Interval,
+    pub y: Interval,
+    pub z: Interval,
 }
 
 impl AABB {
@@ -141,5 +140,25 @@ impl AABB {
         if self.z.size() < delta {
             self.z = self.z.expand(delta);
         }
+    }
+}
+
+impl std::ops::Add<Vec3> for AABB {
+    type Output = AABB;
+
+    fn add(self, offset: Vec3) -> AABB {
+        AABB {
+            x: self.x + offset.x(),
+            y: self.y + offset.y(),
+            z: self.z + offset.z(),
+        }
+    }
+}
+
+impl std::ops::Add<AABB> for Vec3 {
+    type Output = AABB;
+
+    fn add(self, bbox: AABB) -> AABB {
+        bbox + self
     }
 }

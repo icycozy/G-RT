@@ -31,6 +31,11 @@ impl HittableList {
         self.bbox = AABB::from_aabbs(&self.bbox,&object.bounding_box());
         self.objects.push(object);   
     }
+    pub fn addlist(&mut self, list: HittableList) {
+        for object in list.objects {
+            self.add(object);
+        }
+    }
 }
 
 impl Hittable for HittableList {
