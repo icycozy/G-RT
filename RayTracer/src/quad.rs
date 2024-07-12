@@ -3,43 +3,43 @@ use crate::vec3::Vec3;
 type Point3 = Vec3;
 use crate::material::Material;
 use crate::aabb::AABB;
-use std::rc::Rc;
 use crate::ray::Ray;
 use crate::interval::Interval;
 use crate::hit_list::HittableList;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Quad {
-    Q: Point3,
+    q: Point3,
     u: Vec3,
     v: Vec3,
     w: Vec3,
-    mat: Option<Rc<dyn Material>>,
+    mat: Option<Arc<dyn Material + Send + Sync>>,
     bbox: AABB,
     normal: Vec3,
-    D: f64,
+    d: f64,
 }
 
 impl Quad {
-    pub fn new(Q: Point3, u: Vec3, v: Vec3, mat: Option<Rc<dyn Material>>) -> Self {
+    pub fn new(q: Point3, u: Vec3, v: Vec3, mat: Option<Arc<dyn Material + Send + Sync>>) -> Self {
         let n = u.cross(v);
         let normal = n.unit();
-        let D = normal.dot(Q);
+        let d = normal.dot(q);
         let w = (1.0 / n.squared_length()) * n;
 
-        let bbox_diagonal1 = AABB::from_points(Q, Q + u + v);
-        let bbox_diagonal2 = AABB::from_points(Q + u, Q + v);
+        let bbox_diagonal1 = AABB::from_points(q, q + u + v);
+        let bbox_diagonal2 = AABB::from_points(q + u, q + v);
         let bbox = AABB::from_aabbs(&bbox_diagonal1, &bbox_diagonal2);
 
         Quad {
-            Q,
+            q,
             u,
             v,
             w,
             mat,
             bbox,
             normal,
-            D,
+            d,
         }
     }
 
@@ -73,13 +73,13 @@ impl Hittable for Quad {
         }
 
         // Return false if the hit point parameter t is outside the ray interval.
-        let t = (self.D - self.normal.dot(*r.origin())) / denom;
+        let t = (self.d - self.normal.dot(*r.origin())) / denom;
         if !ray_t.contains(t) {
             return false;
         }
 
         let intersection = r.at(t);
-        let planar_hitpt_vector = intersection - self.Q;
+        let planar_hitpt_vector = intersection - self.q;
         let alpha = self.w.dot(planar_hitpt_vector.cross(self.v));
         let beta = self.w.dot(self.u.cross(planar_hitpt_vector));
 
@@ -97,12 +97,12 @@ impl Hittable for Quad {
 }
 
 impl HittableClone for Quad {
-    fn clone_box(&self) -> Box<dyn Hittable> {
-        Box::new(self.clone())
+    fn clone_box(&self) -> Arc<dyn Hittable + Send + Sync> {
+        Arc::new(self.clone())
     }
 }
 
-pub fn make_box(a: Point3, b: Point3, mat: Option<Rc<dyn Material>>) -> HittableList {
+pub fn make_box(a: Point3, b: Point3, mat: Option<Arc<dyn Material + Send + Sync>>) -> HittableList {
     // Returns the 3D box (six sides) that contains the two opposite vertices a & b.
 
     let mut sides = HittableList::new();
@@ -123,37 +123,37 @@ pub fn make_box(a: Point3, b: Point3, mat: Option<Rc<dyn Material>>) -> Hittable
     let dy = Vec3::new(0.0, max.y() - min.y(), 0.0);
     let dz = Vec3::new(0.0, 0.0, max.z() - min.z());
 
-    sides.add(Box::new(Quad::new(
+    sides.add(Arc::new(Quad::new(
         Point3::new(min.x(), min.y(), max.z()),
         dx,
         dy,
         mat.clone(),
     ))); // front
-    sides.add(Box::new(Quad::new(
+    sides.add(Arc::new(Quad::new(
         Point3::new(max.x(), min.y(), max.z()),
         -1.0 * dz,
         dy,
         mat.clone(),
     ))); // right
-    sides.add(Box::new(Quad::new(
+    sides.add(Arc::new(Quad::new(
         Point3::new(max.x(), min.y(), min.z()),
         -1.0 * dx,
         dy,
         mat.clone(),
     ))); // back
-    sides.add(Box::new(Quad::new(
+    sides.add(Arc::new(Quad::new(
         Point3::new(min.x(), min.y(), min.z()),
         dz,
         dy,
         mat.clone(),
     ))); // left
-    sides.add(Box::new(Quad::new(
+    sides.add(Arc::new(Quad::new(
         Point3::new(min.x(), max.y(), max.z()),
         dx,
         -1.0 * dz,
         mat.clone(),
     ))); // top
-    sides.add(Box::new(Quad::new(
+    sides.add(Arc::new(Quad::new(
         Point3::new(min.x(), min.y(), min.z()),
         dx,
         dz,

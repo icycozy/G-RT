@@ -1,4 +1,3 @@
-use std::rc::Rc;
 use crate::material::{Isotropic, Material};
 use crate::vec3::Vec3;
 type Color = Vec3;
@@ -8,28 +7,29 @@ use crate::interval::{self, Interval};
 use crate::aabb::AABB;
 use crate::ray::Ray;
 use crate::rtweekend::random_double;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct ConstantMedium {
-    boundary: Box<dyn Hittable>,
+    boundary: Arc<dyn Hittable + Send + Sync>,
     neg_inv_density: f64,
-    phase_function: Rc<dyn Material>,
+    phase_function: Arc<dyn Material + Send + Sync>,
 }
 
 impl ConstantMedium {
-    pub fn new(boundary: Box<dyn Hittable>, density: f64, tex: Box<dyn Texture>) -> Self {
+    pub fn new(boundary: Arc<dyn Hittable + Send + Sync>, density: f64, tex: Arc<dyn Texture + Send + Sync>) -> Self {
         Self {
             boundary,
             neg_inv_density: -1.0 / density,
-            phase_function: Rc::new(Isotropic::with_texture(tex)),
+            phase_function: Arc::new(Isotropic::with_texture(tex)),
         }
     }
 
-    pub fn new_with_albedo(boundary: Box<dyn Hittable>, density: f64, albedo: Color) -> Self {
+    pub fn new_with_albedo(boundary: Arc<dyn Hittable + Send + Sync>, density: f64, albedo: Color) -> Self {
         Self {
             boundary,
             neg_inv_density: -1.0 / density,
-            phase_function: Rc::new(Isotropic::new(albedo)),
+            phase_function: Arc::new(Isotropic::new(albedo)),
         }
     }
 }
@@ -95,7 +95,7 @@ impl Hittable for ConstantMedium {
 }
 
 impl HittableClone for ConstantMedium {
-    fn clone_box(&self) -> Box<dyn Hittable> {
-        Box::new(self.clone())
+    fn clone_box(&self) -> Arc<dyn Hittable + Send + Sync> {
+        Arc::new(self.clone())
     }
 }

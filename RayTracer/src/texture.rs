@@ -3,17 +3,10 @@ use crate::vec3::Vec3;
 type Color = Vec3;
 use crate::rtw::RtwImage;
 use crate::perlin::Perlin;
+use std::sync::Arc;
 
-pub trait TextureClone {
-    fn clone_box(&self) -> Box<dyn Texture>;
-}
-pub trait Texture: TextureClone {
+pub trait Texture {
     fn value(&self, u: f64, v: f64, p: &Vec3) -> Color;
-}
-impl Clone for Box<dyn Texture> {
-    fn clone(&self) -> Box<dyn Texture> {
-        self.clone_box()
-    }
 }
 
 #[derive(Clone)]
@@ -37,22 +30,16 @@ impl Texture for SolidColor {
     }
 }
 
-impl TextureClone for SolidColor {
-    fn clone_box(&self) -> Box<dyn Texture> {
-        Box::new(self.clone())
-    }
-}
-
 
 #[derive(Clone)]
 pub struct CheckerTexture {
     inv_scale: f64,
-    even: Box<dyn Texture>,
-    odd: Box<dyn Texture>,
+    even: Arc<dyn Texture + Send + Sync>,
+    odd: Arc<dyn Texture + Send + Sync>,
 }
 
 impl CheckerTexture {
-    pub fn from_texture(scale: f64, even: Box<dyn Texture>, odd: Box<dyn Texture>) -> Self {
+    pub fn from_texture(scale: f64, even: Arc<dyn Texture + Send + Sync>, odd: Arc<dyn Texture + Send + Sync>) -> Self {
         CheckerTexture {
             inv_scale: 1.0 / scale,
             even,
@@ -60,8 +47,8 @@ impl CheckerTexture {
         }
     }
     pub fn from_color(scale: f64, c1: Color, c2: Color) -> Self {
-        let even = Box::new(SolidColor::new(c1));
-        let odd = Box::new(SolidColor::new(c2));
+        let even = Arc::new(SolidColor::new(c1));
+        let odd = Arc::new(SolidColor::new(c2));
 
         CheckerTexture::from_texture(scale, even, odd)
     }
@@ -80,12 +67,6 @@ impl Texture for CheckerTexture {
         } else {
             self.odd.value(u, v, p)
         }
-    }
-}
-
-impl TextureClone for CheckerTexture {
-    fn clone_box(&self) -> Box<dyn Texture> {
-        Box::new(self.clone())
     }
 }
 
@@ -117,7 +98,7 @@ impl Texture for ImageTexture {
             Color::new(0.0, 1.0, 1.0) // Return solid cyan as a debugging aid
         } else {
             let u_clamped = Interval::with_values(0.0, 1.0).clamp(u);
-            let v_clamped = Interval::with_values(0.0, 1.0).clamp(v); // Flip V to image coordinates
+            let v_clamped = 1.0 - Interval::with_values(0.0, 1.0).clamp(v); // Flip V to image coordinates
 
             let i = (u_clamped * self.image.width() as f64) as usize;
             let j = (v_clamped * self.image.height() as f64) as usize;
@@ -133,11 +114,8 @@ impl Texture for ImageTexture {
     }
 }
 
-impl TextureClone for ImageTexture {
-    fn clone_box(&self) -> Box<dyn Texture> {
-        Box::new(self.clone())
-    }
-}
+unsafe impl Send for ImageTexture {} 
+unsafe impl Sync for ImageTexture {}
 
 #[derive(Clone)]
 pub struct NoiseTexture {
@@ -167,8 +145,3 @@ impl Texture for NoiseTexture {
     }
 }
 
-impl TextureClone for NoiseTexture {
-    fn clone_box(&self) -> Box<dyn Texture> {
-        Box::new(self.clone())
-    }
-}

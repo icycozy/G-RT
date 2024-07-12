@@ -8,6 +8,8 @@ use image::{ImageBuffer, RgbImage};
 use std::fs::File;
 use crate::rtweekend::random_double;
 type Color = Vec3;
+use rayon::prelude::*;
+use std::sync::{Arc, Mutex};
 
 pub struct Camera {
     image_width: u32,   // Rendered image width in pixel count
@@ -116,22 +118,36 @@ impl Camera {
         };
     
         let mut img: RgbImage = ImageBuffer::new(self.image_width, self.image_height);
+        let img_mtx = Arc::new(Mutex::new(&mut img)); // wrap with &mut
 
         println!("P3\n{} {}\n255", self.image_width, self.image_height);
 
-        for i in 0..self.image_height {
-            for j in 0..self.image_width {
-                let mut pixel_color = Vec3::new(0.0, 0.0, 0.0);
-                for sample in 0..self.samples_per_pixel {
-                    let r = self.get_ray(i, j);
-                    pixel_color = pixel_color + r.ray_color(self.background, self.max_depth, &world);
-                }
-                pixel_color = pixel_color * self.pixel_samples_scale;
+        // for i in 0..self.image_height {
+        //     for j in 0..self.image_width {
+        //         let mut pixel_color = Vec3::new(0.0, 0.0, 0.0);
+        //         for sample in 0..self.samples_per_pixel {
+        //             let r = self.get_ray(i, j);
+        //             pixel_color = pixel_color + r.ray_color(self.background, self.max_depth, &world);
+        //         }
+        //         pixel_color = pixel_color * self.pixel_samples_scale;
                 
-                write_color(pixel_color, &mut img, i as usize, j as usize);
-                bar.inc(1);
+        //         write_color(pixel_color, &mut img, i as usize, j as usize);
+        //         bar.inc(1);
+        //     }
+        // }
+        let mut pixels: Vec<(u32, u32)> = (0..self.image_height).flat_map(|i| (0..self.image_width).map(move |j| (i, j))).collect();
+        pixels.par_iter_mut().for_each(|&mut (i, j)| {
+            let mut pixel_color = Vec3::new(0.0, 0.0, 0.0);
+            for _ in 0..self.samples_per_pixel {
+                let r = self.get_ray(i, j);
+                pixel_color = pixel_color + r.ray_color(self.background, self.max_depth, &world);
             }
-        }
+            pixel_color = pixel_color * self.pixel_samples_scale;
+        
+            write_color(pixel_color, &mut img_mtx.lock().unwrap(), i as usize, j as usize);
+            bar.inc(1);
+        });
+
         bar.finish();
     
         println!("Ouput image as \"{}\"\n Author: {}", path, AUTHOR);
@@ -152,7 +168,7 @@ impl Camera {
                           + ((i as f64 + offset.x()) * self.pixel_delta_u)
                           + ((j as f64 + offset.y()) * self.pixel_delta_v);
 
-        let ray_origin = if (self.defocus_angle <= 0.0) { self.center } else { self.defocus_disk_sample() };
+        let ray_origin = if self.defocus_angle <= 0.0 { self.center } else { self.defocus_disk_sample() };
         let ray_direction = pixel_sample - ray_origin;
         let ray_time = random_double(0.0, 1.0);
 

@@ -3,14 +3,14 @@ use crate::vec3::Vec3;
 use crate::ray::Ray;
 use crate::interval::Interval;
 use crate::material::Material;
-use std::rc::Rc;
 use crate::aabb::AABB;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Sphere {
     center1: Vec3,
     radius: f64,
-    mat: Option<Rc<dyn Material>>,
+    mat: Option<Arc<dyn Material + Send + Sync>>,
     is_moving: bool,
     center_vec: Vec3,
     bbox: AABB,
@@ -18,7 +18,7 @@ pub struct Sphere {
 
 impl Sphere {
     // Stationary Sphere
-    pub fn new(center: Vec3, radius: f64, mat: Option<Rc<dyn Material>>) -> Self {
+    pub fn new(center: Vec3, radius: f64, mat: Option<Arc<dyn Material + Send + Sync>>) -> Self {
         let center_vec = Vec3::new(radius, radius, radius);
         let bbox = AABB::from_points(center - center_vec, center + center_vec);   
         Self {
@@ -32,7 +32,7 @@ impl Sphere {
     }
 
     // Moving Sphere
-    pub fn new_moving(center1: Vec3, center2: Vec3, radius: f64, mat: Option<Rc<dyn Material>>) -> Self {
+    pub fn new_moving(center1: Vec3, center2: Vec3, radius: f64, mat: Option<Arc<dyn Material + Send + Sync>>) -> Self {
         let center_vec = center2 - center1;
         let bbox = AABB::from_aabbs(
             &AABB::from_points(center1 - Vec3::new(radius, radius, radius), center1 + Vec3::new(radius, radius, radius)),
@@ -114,7 +114,7 @@ impl Hittable for Sphere {
 }
 
 impl HittableClone for Sphere {
-    fn clone_box(&self) -> Box<dyn Hittable> {
-        Box::new(self.clone())
+    fn clone_box(&self) -> Arc<dyn Hittable + Sync + Send> {
+        Arc::new(self.clone())
     }
 }

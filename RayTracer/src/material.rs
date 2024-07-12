@@ -5,7 +5,8 @@ use crate::ray::Ray;
 use crate::vec3::Vec3;
 type Color = Vec3;
 use crate::rtweekend::random_double;
-use crate::texture::{Texture, SolidColor, CheckerTexture};
+use crate::texture::{Texture, SolidColor};
+use std::sync::Arc;
 
 pub trait Material: Any {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>;
@@ -17,17 +18,17 @@ pub trait Material: Any {
 
 pub struct Lambertian {
     albedo: Color,
-    tex: Box<dyn Texture>,
+    tex: Arc<dyn Texture + Send + Sync>,
 }
 
 impl Lambertian {
     pub fn new(albedo: Color) -> Self {
         Lambertian {
             albedo,
-            tex: Box::new(SolidColor::new(albedo)),
+            tex: Arc::new(SolidColor::new(albedo)),
         }
     }
-    pub fn with_texture(tex: Box<dyn Texture>) -> Self {
+    pub fn with_texture(tex: Arc<dyn Texture + Send + Sync>) -> Self {
         Lambertian {
             albedo: Color::new(0.0, 0.0, 0.0), // Placeholder value, replace with desired albedo
             tex,
@@ -128,16 +129,16 @@ impl Material for Dielectric {
 
 #[derive(Clone)]
 pub struct DiffuseLight {
-    tex: Box<dyn Texture>,
+    tex: Arc<dyn Texture + Send + Sync>,
 }
 
 impl DiffuseLight {
-    pub fn new(tex: Box<dyn Texture>) -> Self {
+    pub fn new(tex: Arc<dyn Texture + Send + Sync>) -> Self {
         DiffuseLight { tex }
     }
     pub fn with_color(color: Color) -> Self {
         DiffuseLight {
-            tex: Box::new(SolidColor::new(color)),
+            tex: Arc::new(SolidColor::new(color)),
         }
     }
 }
@@ -156,16 +157,16 @@ impl Material for DiffuseLight {
 
 #[derive(Clone)]
 pub struct Isotropic {
-    tex: Box<dyn Texture>,
+    tex: Arc<dyn Texture + Send + Sync>,
 }
 
 impl Isotropic {
     pub fn new(albedo: Color) -> Self {
         Isotropic {
-            tex: Box::new(SolidColor::new(albedo)),
+            tex: Arc::new(SolidColor::new(albedo)),
         }
     }
-    pub fn with_texture(tex: Box<dyn Texture>) -> Self {
+    pub fn with_texture(tex: Arc<dyn Texture + Sync + Send>) -> Self {
         Isotropic {
             tex,
         }

@@ -1,6 +1,5 @@
 use std::env;
 use std::ffi::CString;
-use std::fmt::format;
 use std::ptr;
 
 #[repr(C)]
@@ -17,7 +16,6 @@ pub struct RtwImage {
 
 impl RtwImage {
     pub fn new(image_filename: &str) -> Self {
-        let filename = CString::new(image_filename).expect("Failed to create CString");
         let imagedir = env::var("RtwImageS").ok();
 
         let mut image = RtwImage {

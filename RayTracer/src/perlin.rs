@@ -1,4 +1,4 @@
-use crate::rtweekend::{random_double, random_int};
+use crate::rtweekend::random_int;
 use crate::vec3::Vec3;
 type Point3 = Vec3;
 

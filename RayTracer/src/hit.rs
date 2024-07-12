@@ -4,8 +4,8 @@ type Point3 = Vec3;
 use crate::interval::Interval;
 use crate::material::Material;
 use std::f64::INFINITY;
-use std::rc::Rc;
 use crate::aabb::AABB;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct HitRecord {
@@ -15,7 +15,7 @@ pub struct HitRecord {
     pub u: f64,
     pub v: f64,
     pub front_face: bool,
-    pub mat: Option<Rc<dyn Material>>,
+    pub mat: Option<Arc<dyn Material + Send + Sync>>,
 }
 
 impl Default for HitRecord {
@@ -45,31 +45,24 @@ impl HitRecord {
     }
 }
 
-
-
 pub trait HittableClone {
-    fn clone_box(&self) -> Box<dyn Hittable>;
+    fn clone_box(&self) -> Arc<dyn Hittable + Send + Sync>;
 }
 pub trait Hittable: HittableClone {
     fn hit(&self, r: &Ray, ray_t: Interval, rec: &mut HitRecord) -> bool;
     fn bounding_box(&self) -> AABB;
 }
 
-impl Clone for Box<dyn Hittable> {
-    fn clone(&self) -> Box<dyn Hittable> {
-        self.clone_box()
-    }
-}
 
 #[derive(Clone)]
 pub struct Translate {
-    object: Box<dyn Hittable>,
+    object: Arc<dyn Hittable + Send + Sync>,
     offset: Vec3,
     bbox: AABB,
 }
 
 impl Translate {
-    pub fn new(object: Box<dyn Hittable>, offset: Vec3) -> Self {
+    pub fn new(object: Arc<dyn Hittable + Send + Sync>, offset: Vec3) -> Self {
         let bbox = object.bounding_box() + offset;
         Translate { object, offset, bbox }
     }
@@ -97,20 +90,20 @@ impl Hittable for Translate {
 }
 
 impl HittableClone for Translate {
-    fn clone_box(&self) -> Box<dyn Hittable> {
-        Box::new(self.clone())
+    fn clone_box(&self) -> Arc<dyn Hittable + Send + Sync> {
+        Arc::new(self.clone())
     }
 }
 
 #[derive(Clone)]
 pub struct RotateY {
-    object: Box<dyn Hittable>,
+    object: Arc<dyn Hittable + Send + Sync>,
     sin_theta: f64,
     cos_theta: f64,
     bbox: AABB,
 }
 impl RotateY {
-    pub fn new(object: Box<dyn Hittable>, angle: f64) -> Self {
+    pub fn new(object: Arc<dyn Hittable + Send + Sync>, angle: f64) -> Self {
         let radians = angle.to_radians();
         let sin_theta = radians.sin();
         let cos_theta = radians.cos();
@@ -191,7 +184,7 @@ impl Hittable for RotateY {
     }
 }
 impl HittableClone for RotateY {
-    fn clone_box(&self) -> Box<dyn Hittable> {
-        Box::new(self.clone())
+    fn clone_box(&self) -> Arc<dyn Hittable + Send + Sync> {
+        Arc::new(self.clone())
     }
 }
