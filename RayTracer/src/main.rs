@@ -16,6 +16,8 @@ mod perlin;
 mod quad;
 mod constant_medium;
 
+extern crate opencv;
+
 use vec3::Vec3;
 type Point3 = Vec3;
 type Color = Vec3;
@@ -395,7 +397,7 @@ fn final_scene(height: u32, width: u32, samples_per_pixel: u32, max_depth: u32) 
 }
 
 fn main() {
-    match 3 {
+    match 9 {
         1 => bouncing_spheres(),
         2 => checkered_spheres(),
         3 => earth(),

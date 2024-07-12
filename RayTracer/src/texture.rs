@@ -80,36 +80,14 @@ impl ImageTexture {
         let image = RtwImage::new(filename);
         ImageTexture { image }
     }
-
-    fn clamp(value: f64, min: f64, max: f64) -> f64 {
-        if value < min {
-            min
-        } else if value > max {
-            max
-        } else {
-            value
-        }
-    }
 }
 
 impl Texture for ImageTexture {
     fn value(&self, u: f64, v: f64, p: &Vec3) -> Color {
-        if self.image.height() <= 0 {
+        if self.image.height <= 0 {
             Color::new(0.0, 1.0, 1.0) // Return solid cyan as a debugging aid
         } else {
-            let u_clamped = Interval::with_values(0.0, 1.0).clamp(u);
-            let v_clamped = 1.0 - Interval::with_values(0.0, 1.0).clamp(v); // Flip V to image coordinates
-
-            let i = (u_clamped * self.image.width() as f64) as usize;
-            let j = (v_clamped * self.image.height() as f64) as usize;
-            let pixel = self.image.pixel_data(i as i32, j as i32);
-
-            let color_scale = 1.0 / 255.0;
-            Color::new(
-                color_scale * unsafe { *pixel.offset(0) as f64 },
-                color_scale * unsafe { *pixel.offset(1) as f64 },
-                color_scale * unsafe { *pixel.offset(2) as f64 },
-            )
+            (1.0 / 255.0) * self.image.get_color(u, v)
         }
     }
 }
@@ -139,7 +117,7 @@ impl NoiseTexture {
 }
 
 impl Texture for NoiseTexture {
-    fn value(&self, u: f64, v: f64, p: &Vec3) -> Color {
+    fn value(&self, _u: f64, _v: f64, p: &Vec3) -> Color {
         // Color::new(1.0, 1.0, 1.0) * 0.5 * (1.0 + self.noise.noise(&(self.scale * *p)))
         Color::new(0.5, 0.5, 0.5) * (1.0 + (self.scale * p.z() + 10.0 * self.noise.turb(p, 7)).sin())
     }
