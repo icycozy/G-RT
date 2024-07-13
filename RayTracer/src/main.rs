@@ -398,7 +398,7 @@ fn final_scene(height: u32, width: u32, samples_per_pixel: u32, max_depth: u32) 
 }
 
 fn main() {
-    match 9 {
+    match 0 {
         1 => bouncing_spheres(),
         2 => checkered_spheres(),
         3 => earth(),

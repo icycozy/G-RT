@@ -126,8 +126,6 @@ impl Camera {
 
         println!("P3\n{} {}\n255", self.image_width, self.image_height);
 
-        let image_width = self.image_width;
-        let image_height = self.image_height;
 
         let chunk_height = (self.image_height + HEIGHT_PARTITION - 1) / HEIGHT_PARTITION;
         let chunk_width = (self.image_width + WIDTH_PARTITION - 1) / WIDTH_PARTITION;
@@ -168,20 +166,6 @@ impl Camera {
                 }
             }
         }).unwrap();
-
-
-        // let mut pixels: Vec<(u32, u32)> = (0..self.image_height).flat_map(|i| (0..self.image_width).map(move |j| (i, j))).collect();
-        // pixels.par_iter_mut().for_each(|&mut (i, j)| {
-        //     let mut pixel_color = Vec3::new(0.0, 0.0, 0.0);
-        //     for _ in 0..self.samples_per_pixel {
-        //         let r = self.get_ray(i, j);
-        //         pixel_color = pixel_color + r.ray_color(self.background, self.max_depth, &world);
-        //     }
-        //     pixel_color = pixel_color * self.pixel_samples_scale;
-        
-        //     write_color(pixel_color, &mut img_mtx.lock().unwrap(), i as usize, j as usize);
-        //     bar.inc(1);
-        // });
 
         bar.finish_with_message("Rendering complete");
 
