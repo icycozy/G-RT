@@ -11,11 +11,10 @@ type Color = Vec3;
 use std::sync::{Arc, Mutex, Condvar};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use crossbeam::thread;
-use rayon::prelude::*;
 
-const HEIGHT_PARTITION: u32 = 20;
-const WIDTH_PARTITION: u32 = 20;
-const THREAD_LIMIT: usize = 5000;
+const HEIGHT_PARTITION: u32 = 30;
+const WIDTH_PARTITION: u32 = 30;
+const THREAD_LIMIT: usize = 4000;
 
 #[derive(Clone, Copy)]
 pub struct Camera {
@@ -126,7 +125,6 @@ impl Camera {
 
         println!("P3\n{} {}\n255", self.image_width, self.image_height);
 
-
         let chunk_height = (self.image_height + HEIGHT_PARTITION - 1) / HEIGHT_PARTITION;
         let chunk_width = (self.image_width + WIDTH_PARTITION - 1) / WIDTH_PARTITION;
 
@@ -138,20 +136,18 @@ impl Camera {
             let thread_number_controller = Arc::new(Condvar::new());
             let camera_wrapper = Arc::new(self);
             let world_wrapper = Arc::new(&world);
-            let bar_wrapper = Arc::new(&bar);
             for j in 0..HEIGHT_PARTITION {
                 for i in 0..WIDTH_PARTITION {
                     let img_clone = Arc::clone(&img_mtx);
-                    let bar_clone = Arc::clone(&bar_wrapper);
+                    let bar_clone = bar.clone();
                     let thread_count_clone = Arc::clone(&thread_count);
                     let thread_number_controller_clone = Arc::clone(&thread_number_controller);
                     let cam_clone = Arc::clone(&camera_wrapper);
+                    let world_clone = Arc::clone(&world_wrapper);
         
-                    thread_count_clone.fetch_add(1, Ordering::SeqCst);
-
                     let lock_for_condv = Mutex::new(false);
-                    while !(thread_count_clone.load(Ordering::SeqCst) < THREAD_LIMIT) { // outstanding thread number control
-                      thread_number_controller_clone.wait(lock_for_condv.lock().unwrap()).unwrap();
+                    while !(thread_count.load(Ordering::SeqCst) < THREAD_LIMIT) { // outstanding thread number control
+                      thread_number_controller.wait(lock_for_condv.lock().unwrap()).unwrap();
                     }
         
                     s.spawn(move |_| {
@@ -160,6 +156,7 @@ impl Camera {
                           j * chunk_height, (j + 1) * chunk_height);
         
                         thread_count_clone.fetch_sub(1, Ordering::SeqCst); // subtract first, then notify.
+                        bar_clone.set_message(format!("|{} threads outstanding|", thread_count_clone.load(Ordering::SeqCst)));
                         // NOTIFY
                         thread_number_controller_clone.notify_one();
                     });
@@ -169,6 +166,7 @@ impl Camera {
 
         bar.finish_with_message("Rendering complete");
 
+    
         println!("Ouput image as \"{}\"\n Author: {}", path, AUTHOR);
 
         let output_image = image::DynamicImage::ImageRgb8(img);
@@ -182,8 +180,6 @@ impl Camera {
     pub fn render_sub(&self, world: &HittableList, img_mtx: &Mutex<&mut RgbImage>, bar: &ProgressBar, x_min: u32, x_max: u32, y_min: u32, y_max: u32) {
         let x_max = x_max.min(self.image_width);
         let y_max = y_max.min(self.image_height);
-
-        // println!("x{} {}, y{} {}\n", x_min, x_max, y_min, y_max);
         
         let mut temp_buf: Vec<(usize, usize, Vec3)> = Vec::new();
 
@@ -196,16 +192,13 @@ impl Camera {
                 }
                 pixel_color = pixel_color * self.pixel_samples_scale;
                 temp_buf.push((i as usize, j as usize, pixel_color));
-
-                // println!("color {} {} {}\n", pixel_color.x, pixel_color.y, pixel_color.z);
+                bar.inc(1);
             }
         }
         
         let mut img = img_mtx.lock().unwrap();
         for (i, j, color) in temp_buf {
-            // println!("{} {} {}", color.x, color.y, color.z);
-            write_color(color, &mut img, i, j);
-            bar.inc(1);
+            write_color(color, &mut img, i, j)
         }
     }
 

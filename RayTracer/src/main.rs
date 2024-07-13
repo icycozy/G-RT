@@ -92,7 +92,7 @@ fn bouncing_spheres() {
     cam.focus_dist = 10.0;
     cam.background = Vec3::new(0.70, 0.80, 1.00);
 
-    cam.render(&world)
+    cam.render(&world);
 }
 
 fn checkered_spheres() {
@@ -116,7 +116,7 @@ fn checkered_spheres() {
     cam.defocus_angle = 0.0;
     cam.background = Vec3::new(0.70, 0.80, 1.00);
 
-    cam.render(&world)
+    cam.render(&world);
 }
 
 fn earth() {
@@ -160,7 +160,7 @@ fn perlin_spheres() {
     cam.defocus_angle = 0.0;
     cam.background = Vec3::new(0.70, 0.80, 1.00);
 
-    cam.render(&world)
+    cam.render(&world);
 }
 
 fn quads() {
@@ -196,7 +196,7 @@ fn quads() {
     cam.defocus_angle = 0.0;
     cam.background = Vec3::new(0.70, 0.80, 1.00);
 
-    cam.render(&world)
+    cam.render(&world);
 }
 
 fn simple_light() {
@@ -225,7 +225,7 @@ fn simple_light() {
 
     cam.defocus_angle = 0.0;
     cam.background = Vec3::new(0.0, 0.0, 0.0);
-    cam.render(&world)
+    cam.render(&world);
 }
 
 fn cornell_box() {
@@ -316,7 +316,7 @@ fn cornell_smoke() {
 
     cam.defocus_angle = 0.0;
 
-    cam.render(&world)
+    cam.render(&world);
 }
 
 fn final_scene(height: u32, width: u32, samples_per_pixel: u32, max_depth: u32) {
@@ -394,11 +394,11 @@ fn final_scene(height: u32, width: u32, samples_per_pixel: u32, max_depth: u32) 
 
     cam.defocus_angle = 0.0;
 
-    cam.render(&world)
+    cam.render(&world);
 }
 
 fn main() {
-    match 0 {
+    match 9 {
         1 => bouncing_spheres(),
         2 => checkered_spheres(),
         3 => earth(),
