@@ -11,10 +11,11 @@ type Color = Vec3;
 use std::sync::{Arc, Mutex, Condvar};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use crossbeam::thread;
+use rayon::prelude::*;
 
 const HEIGHT_PARTITION: u32 = 20;
 const WIDTH_PARTITION: u32 = 20;
-const THREAD_LIMIT: usize = 10000;
+const THREAD_LIMIT: usize = 5000;
 
 #[derive(Clone, Copy)]
 pub struct Camera {
@@ -111,8 +112,8 @@ impl Camera {
         self.pixel_samples_scale = 1.0 / self.samples_per_pixel as f64;
     }
 
-    pub fn render(cam: &mut Camera, world: &HittableList) {
-        cam.initialize();
+    pub fn render(&mut self, world: &HittableList) {
+        self.initialize();
 
         let path = "output/test.jpg";
         let quality = 60;
@@ -120,37 +121,39 @@ impl Camera {
         let bar: ProgressBar = if is_ci() {
             ProgressBar::hidden()
         } else {
-            ProgressBar::new((cam.image_height * cam.image_width) as u64)
+            ProgressBar::new((self.image_height * self.image_width) as u64)
         };
 
-        println!("P3\n{} {}\n255", cam.image_width, cam.image_height);
+        println!("P3\n{} {}\n255", self.image_width, self.image_height);
 
-        let image_width = cam.image_width;
-        let image_height = cam.image_height;
+        let image_width = self.image_width;
+        let image_height = self.image_height;
 
-        let chunk_height = (cam.image_height + HEIGHT_PARTITION - 1) / HEIGHT_PARTITION;
-        let chunk_width = (cam.image_width + WIDTH_PARTITION - 1) / WIDTH_PARTITION;
+        let chunk_height = (self.image_height + HEIGHT_PARTITION - 1) / HEIGHT_PARTITION;
+        let chunk_width = (self.image_width + WIDTH_PARTITION - 1) / WIDTH_PARTITION;
 
-        let mut img: RgbImage = ImageBuffer::new(cam.image_width, cam.image_height);
+        let mut img: RgbImage = ImageBuffer::new(self.image_width, self.image_height);
         let img_mtx = Arc::new(Mutex::new(&mut img));
 
         thread::scope(|s| {
             let thread_count = Arc::new(AtomicUsize::new(0));
             let thread_number_controller = Arc::new(Condvar::new());
-            let camera_wrapper = Arc::new(cam);
+            let camera_wrapper = Arc::new(self);
             let world_wrapper = Arc::new(&world);
+            let bar_wrapper = Arc::new(&bar);
             for j in 0..HEIGHT_PARTITION {
                 for i in 0..WIDTH_PARTITION {
                     let img_clone = Arc::clone(&img_mtx);
-                    let bar_clone = bar.clone();
+                    let bar_clone = Arc::clone(&bar_wrapper);
                     let thread_count_clone = Arc::clone(&thread_count);
                     let thread_number_controller_clone = Arc::clone(&thread_number_controller);
                     let cam_clone = Arc::clone(&camera_wrapper);
-                    let world_clone = Arc::clone(&world_wrapper);
         
+                    thread_count_clone.fetch_add(1, Ordering::SeqCst);
+
                     let lock_for_condv = Mutex::new(false);
-                    while !(thread_count.load(Ordering::SeqCst) < THREAD_LIMIT) { // outstanding thread number control
-                      thread_number_controller.wait(lock_for_condv.lock().unwrap()).unwrap();
+                    while !(thread_count_clone.load(Ordering::SeqCst) < THREAD_LIMIT) { // outstanding thread number control
+                      thread_number_controller_clone.wait(lock_for_condv.lock().unwrap()).unwrap();
                     }
         
                     s.spawn(move |_| {
@@ -159,7 +162,6 @@ impl Camera {
                           j * chunk_height, (j + 1) * chunk_height);
         
                         thread_count_clone.fetch_sub(1, Ordering::SeqCst); // subtract first, then notify.
-                        bar_clone.set_message(format!("|{} threads outstanding|", thread_count_clone.load(Ordering::SeqCst)));
                         // NOTIFY
                         thread_number_controller_clone.notify_one();
                     });
@@ -167,12 +169,24 @@ impl Camera {
             }
         }).unwrap();
 
+
+        // let mut pixels: Vec<(u32, u32)> = (0..self.image_height).flat_map(|i| (0..self.image_width).map(move |j| (i, j))).collect();
+        // pixels.par_iter_mut().for_each(|&mut (i, j)| {
+        //     let mut pixel_color = Vec3::new(0.0, 0.0, 0.0);
+        //     for _ in 0..self.samples_per_pixel {
+        //         let r = self.get_ray(i, j);
+        //         pixel_color = pixel_color + r.ray_color(self.background, self.max_depth, &world);
+        //     }
+        //     pixel_color = pixel_color * self.pixel_samples_scale;
+        
+        //     write_color(pixel_color, &mut img_mtx.lock().unwrap(), i as usize, j as usize);
+        //     bar.inc(1);
+        // });
+
         bar.finish_with_message("Rendering complete");
 
-    
         println!("Ouput image as \"{}\"\n Author: {}", path, AUTHOR);
 
-        let img = ImageBuffer::new(image_width, image_height);
         let output_image = image::DynamicImage::ImageRgb8(img);
         let mut output_file: File = File::create(path).unwrap();
         match output_image.write_to(&mut output_file, image::ImageOutputFormat::Jpeg(quality)) {
@@ -184,6 +198,8 @@ impl Camera {
     pub fn render_sub(&self, world: &HittableList, img_mtx: &Mutex<&mut RgbImage>, bar: &ProgressBar, x_min: u32, x_max: u32, y_min: u32, y_max: u32) {
         let x_max = x_max.min(self.image_width);
         let y_max = y_max.min(self.image_height);
+
+        // println!("x{} {}, y{} {}\n", x_min, x_max, y_min, y_max);
         
         let mut temp_buf: Vec<(usize, usize, Vec3)> = Vec::new();
 
@@ -196,13 +212,16 @@ impl Camera {
                 }
                 pixel_color = pixel_color * self.pixel_samples_scale;
                 temp_buf.push((i as usize, j as usize, pixel_color));
-                bar.inc(1);
+
+                // println!("color {} {} {}\n", pixel_color.x, pixel_color.y, pixel_color.z);
             }
         }
         
         let mut img = img_mtx.lock().unwrap();
         for (i, j, color) in temp_buf {
-            write_color(color, &mut img, i, j)
+            // println!("{} {} {}", color.x, color.y, color.z);
+            write_color(color, &mut img, i, j);
+            bar.inc(1);
         }
     }
 
