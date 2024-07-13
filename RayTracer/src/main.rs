@@ -30,6 +30,7 @@ use hit::{RotateY, Translate};
 use constant_medium::ConstantMedium;
 use rtweekend::random_double;
 use std::sync::Arc;
+use camera::Camera;
 
 fn bouncing_spheres() {
     // World
@@ -91,7 +92,7 @@ fn bouncing_spheres() {
     cam.focus_dist = 10.0;
     cam.background = Vec3::new(0.70, 0.80, 1.00);
 
-    cam.render(&world);
+    Camera::render(&mut cam, &world)
 }
 
 fn checkered_spheres() {
@@ -115,7 +116,7 @@ fn checkered_spheres() {
     cam.defocus_angle = 0.0;
     cam.background = Vec3::new(0.70, 0.80, 1.00);
 
-    cam.render(&world);
+    Camera::render(&mut cam, &world)
 }
 
 fn earth() {
@@ -136,7 +137,7 @@ fn earth() {
     cam.defocus_angle = 0.0;
     cam.background = Vec3::new(0.70, 0.80, 1.00);
 
-    cam.render(&HittableList::hittable_list(globe));
+    Camera::render(&mut cam, &HittableList::hittable_list(globe));
 }
 
 fn perlin_spheres() {
@@ -159,7 +160,7 @@ fn perlin_spheres() {
     cam.defocus_angle = 0.0;
     cam.background = Vec3::new(0.70, 0.80, 1.00);
 
-    cam.render(&world);
+    Camera::render(&mut cam, &world)
 }
 
 fn quads() {
@@ -195,7 +196,7 @@ fn quads() {
     cam.defocus_angle = 0.0;
     cam.background = Vec3::new(0.70, 0.80, 1.00);
 
-    cam.render(&world);
+    Camera::render(&mut cam, &world)
 }
 
 fn simple_light() {
@@ -224,7 +225,7 @@ fn simple_light() {
 
     cam.defocus_angle = 0.0;
     cam.background = Vec3::new(0.0, 0.0, 0.0);
-    cam.render(&world);
+    Camera::render(&mut cam, &world)
 }
 
 fn cornell_box() {
@@ -271,7 +272,7 @@ fn cornell_box() {
 
     cam.defocus_angle = 0.0;
 
-    cam.render(&world);
+    Camera::render(&mut cam, &world);
 }
 
 fn cornell_smoke() {
@@ -315,7 +316,7 @@ fn cornell_smoke() {
 
     cam.defocus_angle = 0.0;
 
-    cam.render(&world);
+    Camera::render(&mut cam, &world)
 }
 
 fn final_scene(height: u32, width: u32, samples_per_pixel: u32, max_depth: u32) {
@@ -393,11 +394,11 @@ fn final_scene(height: u32, width: u32, samples_per_pixel: u32, max_depth: u32) 
 
     cam.defocus_angle = 0.0;
 
-    cam.render(&world);
+    Camera::render(&mut cam, &world)
 }
 
 fn main() {
-    match 9 {
+    match 0 {
         1 => bouncing_spheres(),
         2 => checkered_spheres(),
         3 => earth(),
@@ -406,7 +407,7 @@ fn main() {
         6 => simple_light(),
         7 => cornell_box(),
         8 => cornell_smoke(),
-        9 => final_scene(400, 400, 500, 40),
+        9 => final_scene(800, 800, 10000, 40),
         _ => final_scene(400, 400, 250, 4),
     }
 }
