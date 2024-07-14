@@ -33,9 +33,8 @@ impl BVHNode {
     }
 
     pub fn new(list: &mut HittableList) -> Self {
-        let start = 0;
         let end = list.objects.len();
-        Self::new_recursive(&mut list.objects, start, end)
+        Self::new_recursive(&mut list.objects, 0, end)
     }
 
     pub fn new_recursive(objects: &mut Vec<Arc<dyn Hittable + Send + Sync>>, start: usize, end: usize) -> Self {
@@ -50,7 +49,8 @@ impl BVHNode {
         let comparator = match axis {
             0 => BVHNode::box_x_compare,
             1 => BVHNode::box_y_compare,
-            _ => BVHNode::box_z_compare,
+            2 => BVHNode::box_z_compare,
+            _ => panic!("Invalid axis"),
         };
     
         let object_span = end - start;
@@ -64,7 +64,7 @@ impl BVHNode {
             left = objects[start].clone();
             right = objects[start + 1].clone();
         } else {
-            objects[start..end].sort_by(comparator);
+            objects[start..end].sort_by(|a, b| comparator(a, b));
     
             let mid = start + object_span / 2;
             left = Arc::new(BVHNode::new_recursive(objects, start, mid));
@@ -81,19 +81,19 @@ impl BVHNode {
 
 impl Hittable for BVHNode {
     fn hit(&self, r: &Ray, ray_t: Interval, rec: &mut HitRecord) -> bool {
-        let mut ray_t = ray_t.clone();
-        if !self.bbox.hit(r, &mut ray_t) {
+        if !self.bbox.hit(r, ray_t) {
             return false;
         }
 
         let hit_left = self.left.hit(r, ray_t, rec);
-        let hit_right = self.right.hit(r, ray_t, rec);
+        let t = if hit_left { rec.t } else { ray_t.max };
+        let hit_right = self.right.hit(r, Interval::with_values(ray_t.min, t), rec);
 
         hit_left || hit_right
     }
 
     fn bounding_box(&self) -> AABB {
-        self.bbox.clone()
+        self.bbox
     }
 }
 

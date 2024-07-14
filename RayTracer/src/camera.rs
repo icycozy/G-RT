@@ -12,9 +12,9 @@ use std::sync::{Arc, Mutex, Condvar};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use crossbeam::thread;
 
-const HEIGHT_PARTITION: u32 = 30;
-const WIDTH_PARTITION: u32 = 30;
-const THREAD_LIMIT: usize = 4000;
+const HEIGHT_PARTITION: u32 = 40;
+const WIDTH_PARTITION: u32 = 40;
+const THREAD_LIMIT: usize = 5000;
 
 #[derive(Clone, Copy)]
 pub struct Camera {

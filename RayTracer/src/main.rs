@@ -30,7 +30,6 @@ use hit::{RotateY, Translate};
 use constant_medium::ConstantMedium;
 use rtweekend::random_double;
 use std::sync::Arc;
-use camera::Camera;
 
 fn bouncing_spheres() {
     // World
@@ -320,6 +319,7 @@ fn cornell_smoke() {
 }
 
 fn final_scene(height: u32, width: u32, samples_per_pixel: u32, max_depth: u32) {
+    let mut world = hit_list::HittableList::new();
     let mut boxes1 = hit_list::HittableList::new();
     let ground = Some(Arc::new(material::Lambertian::new(Vec3::new(0.48, 0.83, 0.53))) as Arc<dyn Material + Send + Sync>);
 
@@ -334,11 +334,10 @@ fn final_scene(height: u32, width: u32, samples_per_pixel: u32, max_depth: u32) 
             let y1 = random_double(1.0, 101.0);
             let z1 = z0 + w;
 
+            // world.addlist(make_box(Point3::new(x0, y0, z0), Point3::new(x1, y1, z1), ground.clone()));
             boxes1.addlist(make_box(Point3::new(x0,y0,z0), Point3::new(x1,y1,z1), ground.clone()));
         }
     }
-
-    let mut world = hit_list::HittableList::new();
 
     world.add(Arc::new(bvh::BVHNode::new(&mut boxes1)));
 

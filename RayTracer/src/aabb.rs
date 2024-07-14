@@ -65,7 +65,8 @@ impl AABB {
         }
     }
 
-    pub fn hit(&self, r: &Ray, ray_t: &mut Interval) -> bool {
+    pub fn hit(&self, r: &Ray, ray_t: Interval) -> bool {
+        let mut ray_t = ray_t.clone();
         let ray_orig = r.origin();
         let ray_dir = r.direction();
 
