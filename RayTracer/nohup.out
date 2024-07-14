@@ -336,3 +336,5 @@ Loading texture: images/earthmap.jpg
 P3
 800 800
 255
+Ouput image as "output/test.jpg"
+ Author: name
