@@ -338,3 +338,123 @@ P3
 255
 Ouput image as "output/test.jpg"
  Author: name
+   Compiling RayTracer v0.1.0 (/root/projects/G-RT/RayTracer)
+warning: unused import: `crate::interval::Interval`
+ --> src/texture.rs:1:5
+  |
+1 | use crate::interval::Interval;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused variable: `world_clone`
+   --> src/camera.rs:146:25
+    |
+146 |                     let world_clone = Arc::clone(&world_wrapper);
+    |                         ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_world_clone`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `p`
+  --> src/texture.rs:86:37
+   |
+86 |     fn value(&self, u: f64, v: f64, p: &Vec3) -> Color {
+   |                                     ^ help: if this is intentional, prefix it with an underscore: `_p`
+
+warning: field `albedo` is never read
+  --> src/material.rs:20:5
+   |
+19 | pub struct Lambertian {
+   |            ---------- field in this struct
+20 |     albedo: Color,
+   |     ^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: associated function `new` is never used
+   --> src/material.rs:136:12
+    |
+135 | impl DiffuseLight {
+    | ----------------- associated function in this implementation
+136 |     pub fn new(tex: Arc<dyn Texture + Send + Sync>) -> Self {
+    |            ^^^
+
+warning: associated function `with_texture` is never used
+   --> src/material.rs:169:12
+    |
+163 | impl Isotropic {
+    | -------------- associated function in this implementation
+...
+169 |     pub fn with_texture(tex: Arc<dyn Texture + Sync + Send>) -> Self {
+    |            ^^^^^^^^^^^^
+
+warning: associated function `solid_color` is never used
+  --> src/texture.rs:21:12
+   |
+17 | impl SolidColor {
+   | --------------- associated function in this implementation
+...
+21 |     pub fn solid_color(red: f64, green: f64, blue: f64) -> Self {
+   |            ^^^^^^^^^^^
+
+warning: associated function `new` is never used
+   --> src/texture.rs:105:12
+    |
+104 | impl NoiseTexture {
+    | ----------------- associated function in this implementation
+105 |     pub fn new() -> Self {
+    |            ^^^
+
+warning: method `get_color_bilinear` is never used
+  --> src/rtw.rs:40:12
+   |
+12 | impl RtwImage {
+   | ------------- method in this implementation
+...
+40 |     pub fn get_color_bilinear(&self, mut u: f64, mut v: f64) -> Vec3 {
+   |            ^^^^^^^^^^^^^^^^^^
+
+warning: associated function `trilinear_interp` is never used
+  --> src/perlin.rs:94:8
+   |
+13 | impl Perlin {
+   | ----------- associated function in this implementation
+...
+94 |     fn trilinear_interp(c: [[[f64; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
+   |        ^^^^^^^^^^^^^^^^
+
+warning: associated function `new` is never used
+  --> src/constant_medium.rs:20:12
+   |
+19 | impl ConstantMedium {
+   | ------------------- associated function in this implementation
+20 |     pub fn new(boundary: Arc<dyn Hittable + Send + Sync>, density: f64, tex: Arc<dyn Texture + Send + Sync>) -> Self {
+   |            ^^^
+
+warning: crate `RayTracer` should have a snake case name
+  |
+  = help: convert the identifier to snake case: `ray_tracer`
+  = note: `#[warn(non_snake_case)]` on by default
+
+warning: unused `MutexGuard` that must be used
+   --> src/camera.rs:150:23
+    |
+150 |                       thread_number_controller.wait(lock_for_condv.lock().unwrap()).unwrap();
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if unused the Mutex will immediately unlock
+    = note: `#[warn(unused_must_use)]` on by default
+help: use `let _ = ...` to ignore the resulting value
+    |
+150 |                       let _ = thread_number_controller.wait(lock_for_condv.lock().unwrap()).unwrap();
+    |                       +++++++
+
+warning: `RayTracer` (bin "RayTracer") generated 13 warnings (run `cargo fix --bin "RayTracer"` to apply 3 suggestions)
+    Finished dev [unoptimized + debuginfo] target(s) in 19.73s
+     Running `target/debug/RayTracer`
+Loading texture: images/earthmap.jpg
+P3
+800 800
+255
+Ouput image as "output/test.jpg"
+ Author: name
