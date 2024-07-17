@@ -15,6 +15,8 @@ mod rtw;
 mod perlin;
 mod quad;
 mod constant_medium;
+mod onb;
+mod pdf;
 
 extern crate opencv;
 
@@ -91,7 +93,7 @@ fn bouncing_spheres() {
     cam.focus_dist = 10.0;
     cam.background = Vec3::new(0.70, 0.80, 1.00);
 
-    cam.render(&world);
+    // cam.render(&world);
 }
 
 fn checkered_spheres() {
@@ -115,7 +117,7 @@ fn checkered_spheres() {
     cam.defocus_angle = 0.0;
     cam.background = Vec3::new(0.70, 0.80, 1.00);
 
-    cam.render(&world);
+    // cam.render(&world);
 }
 
 fn earth() {
@@ -136,7 +138,7 @@ fn earth() {
     cam.defocus_angle = 0.0;
     cam.background = Vec3::new(0.70, 0.80, 1.00);
 
-    cam.render(&HittableList::hittable_list(globe));
+    // cam.render(&HittableList::hittable_list(globe));
 }
 
 fn perlin_spheres() {
@@ -159,7 +161,7 @@ fn perlin_spheres() {
     cam.defocus_angle = 0.0;
     cam.background = Vec3::new(0.70, 0.80, 1.00);
 
-    cam.render(&world);
+    // cam.render(&world);
 }
 
 fn quads() {
@@ -195,7 +197,7 @@ fn quads() {
     cam.defocus_angle = 0.0;
     cam.background = Vec3::new(0.70, 0.80, 1.00);
 
-    cam.render(&world);
+    // cam.render(&world);
 }
 
 fn simple_light() {
@@ -224,7 +226,7 @@ fn simple_light() {
 
     cam.defocus_angle = 0.0;
     cam.background = Vec3::new(0.0, 0.0, 0.0);
-    cam.render(&world);
+    // cam.render(&world);
 }
 
 fn cornell_box() {
@@ -245,22 +247,26 @@ fn cornell_box() {
     // world.addlist(make_box(Point3::new(130.0, 0.0, 65.0), Point3::new(295.0, 165.0, 230.0), white.clone()));
     // world.addlist(make_box(Point3::new(265.0, 0.0, 295.0), Point3::new(430.0, 330.0, 460.0), white));
 
+    // Box
     let box1 = Arc::new(make_box(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 330.0, 165.0), white.clone()));
     let box1 = Arc::new(RotateY::new(box1, 15.0));
     let box1 = Arc::new(Translate::new(box1, Vec3::new(265.0, 0.0, 295.0)));
     world.add(box1);
 
-    let box2 = Arc::new(make_box(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 165.0, 165.0), white.clone()));
-    let box2 = Arc::new(RotateY::new(box2, -18.0));
-    let box2 = Arc::new(Translate::new(box2, Vec3::new(130.0, 0.0, 65.0)));
-    world.add(box2);
+    // Glass Sphere
+    let glass = Some(Arc::new(material::Dielectric::new(1.5)) as Arc<dyn Material + Send + Sync>);
+    world.add(Arc::new(sphere::Sphere::new(Point3::new(190.0, 90.0, 190.0), 90.0, glass)));
 
+    let mut lights = hit_list::HittableList::new();
+    let m: Option<Arc<dyn Material + Send + Sync>> = None;
+    lights.add(Arc::new(quad::Quad::new(Point3::new(343.0, 554.0, 332.0), Vec3::new(-130.0, 0.0, 0.0), Vec3::new(0.0, 0.0, -105.0), m.clone())));
+    lights.add(Arc::new(sphere::Sphere::new(Point3::new(190.0, 90.0, 190.0), 90.0, m)));
 
     let width = 400;
     let height = 400;
     let mut cam = camera::Camera::new(height, width);
 
-    cam.samples_per_pixel = 200;
+    cam.samples_per_pixel = 1000;
     cam.max_depth = 50;
     cam.background = Vec3::new(0.0, 0.0, 0.0);
 
@@ -271,7 +277,7 @@ fn cornell_box() {
 
     cam.defocus_angle = 0.0;
 
-    cam.render(&world);
+    cam.render(&world, &lights);
 }
 
 fn cornell_smoke() {
@@ -315,7 +321,7 @@ fn cornell_smoke() {
 
     cam.defocus_angle = 0.0;
 
-    cam.render(&world);
+    // cam.render(&world);
 }
 
 fn final_scene(height: u32, width: u32, samples_per_pixel: u32, max_depth: u32) {
@@ -393,11 +399,11 @@ fn final_scene(height: u32, width: u32, samples_per_pixel: u32, max_depth: u32) 
 
     cam.defocus_angle = 0.0;
 
-    cam.render(&world);
+    // cam.render(&world);
 }
 
 fn main() {
-    match 9 {
+    match 7 {
         1 => bouncing_spheres(),
         2 => checkered_spheres(),
         3 => earth(),

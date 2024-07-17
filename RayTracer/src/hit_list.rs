@@ -3,6 +3,9 @@ use crate::ray::Ray;
 use crate::interval::Interval;
 use crate::aabb::AABB;
 use std::sync::Arc;
+use crate::rtweekend::random_int;
+use crate::vec3::Vec3;
+type Point3 = Vec3;
 
 #[derive(Clone)]
 pub struct HittableList {
@@ -57,6 +60,22 @@ impl Hittable for HittableList {
     }
     fn bounding_box(&self) -> AABB {
         self.bbox.clone()
+    }
+
+    fn pdf_value(&self, origin: &Point3, direction: &Vec3) -> f64 {
+        let weight = 1.0 / self.objects.len() as f64;
+        let mut sum = 0.0;
+
+        for object in &self.objects {
+            sum += weight * object.pdf_value(origin, direction);
+        }
+
+        sum
+    }
+
+    fn random(&self, origin: &Point3) -> Vec3 {
+        let int_size = self.objects.len();
+        self.objects[random_int(0, int_size as i32 - 1) as usize].random(origin)
     }
 }
 

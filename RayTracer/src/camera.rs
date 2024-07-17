@@ -12,9 +12,9 @@ use std::sync::{Arc, Mutex, Condvar};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use crossbeam::thread;
 
-const HEIGHT_PARTITION: u32 = 40;
-const WIDTH_PARTITION: u32 = 40;
-const THREAD_LIMIT: usize = 5000;
+const HEIGHT_PARTITION: u32 = 20;
+const WIDTH_PARTITION: u32 = 20;
+const THREAD_LIMIT: usize = 40;
 
 #[derive(Clone, Copy)]
 pub struct Camera {
@@ -39,6 +39,8 @@ pub struct Camera {
     defocus_disk_u: Vec3,
     defocus_disk_v: Vec3,
     pub background: Color,
+    sqrt_spp: u32,
+    recip_sqrt_spp: f64,
 }
 
 const AUTHOR: &str = "name";
@@ -71,6 +73,8 @@ impl Camera {
             defocus_disk_u: Vec3::new(0.0, 0.0, 0.0),
             defocus_disk_v: Vec3::new(0.0, 0.0, 0.0),
             background: Color::new(0.0, 0.0, 0.0),
+            sqrt_spp: 10,
+            recip_sqrt_spp: 0.1,
         }
     }
 
@@ -104,14 +108,17 @@ impl Camera {
         self.defocus_disk_u = self.u * defocus_radius;
         self.defocus_disk_v = self.v * defocus_radius;
 
+        self.sqrt_spp = (self.samples_per_pixel as f64).sqrt() as u32;
+        self.pixel_samples_scale = 1.0 / (self.sqrt_spp * self.sqrt_spp) as f64;
+        self.recip_sqrt_spp = 1.0 / self.sqrt_spp as f64;
+
         self.center = center;
         self.pixel00_loc = pixel00_loc;
         self.pixel_delta_u = pixel_delta_u;
         self.pixel_delta_v = pixel_delta_v;
-        self.pixel_samples_scale = 1.0 / self.samples_per_pixel as f64;
     }
 
-    pub fn render(&mut self, world: &HittableList) {
+    pub fn render(&mut self, world: &HittableList, lights: &HittableList) {
         self.initialize();
 
         let path = "output/test.jpg";
@@ -143,7 +150,6 @@ impl Camera {
                     let thread_count_clone = Arc::clone(&thread_count);
                     let thread_number_controller_clone = Arc::clone(&thread_number_controller);
                     let cam_clone = Arc::clone(&camera_wrapper);
-                    let world_clone = Arc::clone(&world_wrapper);
         
                     let lock_for_condv = Mutex::new(false);
                     while !(thread_count.load(Ordering::SeqCst) < THREAD_LIMIT) { // outstanding thread number control
@@ -153,7 +159,7 @@ impl Camera {
                     s.spawn(move |_| {
                         cam_clone.render_sub(&world, &img_clone, &bar_clone, 
                           i * chunk_width, (i + 1) * chunk_width, 
-                          j * chunk_height, (j + 1) * chunk_height);
+                          j * chunk_height, (j + 1) * chunk_height, &lights);
         
                         thread_count_clone.fetch_sub(1, Ordering::SeqCst); // subtract first, then notify.
                         bar_clone.set_message(format!("|{} threads outstanding|", thread_count_clone.load(Ordering::SeqCst)));
@@ -177,7 +183,7 @@ impl Camera {
         }
     }
 
-    pub fn render_sub(&self, world: &HittableList, img_mtx: &Mutex<&mut RgbImage>, bar: &ProgressBar, x_min: u32, x_max: u32, y_min: u32, y_max: u32) {
+    pub fn render_sub(&self, world: &HittableList, img_mtx: &Mutex<&mut RgbImage>, bar: &ProgressBar, x_min: u32, x_max: u32, y_min: u32, y_max: u32, lights: &HittableList) {
         let x_max = x_max.min(self.image_width);
         let y_max = y_max.min(self.image_height);
         
@@ -186,9 +192,11 @@ impl Camera {
         for j in y_min..y_max {
             for i in x_min..x_max {
                 let mut pixel_color = Vec3::new(0.0, 0.0, 0.0);
-                for _ in 0..self.samples_per_pixel {
-                    let r = self.get_ray(i as u32, j as u32);
-                    pixel_color = pixel_color + r.ray_color(self.background, self.max_depth, &world);
+                for s_j in 0..self.sqrt_spp {
+                    for s_i in 0..self.sqrt_spp {
+                        let r = self.get_ray(i, j, s_i, s_j);
+                        pixel_color += r.ray_color(self.background, self.max_depth, world, lights);
+                    }
                 }
                 pixel_color = pixel_color * self.pixel_samples_scale;
                 temp_buf.push((i as usize, j as usize, pixel_color));
@@ -202,11 +210,11 @@ impl Camera {
         }
     }
 
-    fn get_ray(&self, i: u32, j: u32) -> Ray {
+    fn get_ray(&self, i: u32, j: u32, s_i: u32, s_j: u32) -> Ray {
         // Construct a camera ray originating from the origin and directed at randomly sampled
         // point around the pixel location i, j.
 
-        let offset = self.sample_square();
+        let offset = self.sample_square_stratified(s_i, s_j);
         let pixel_sample = self.pixel00_loc
                           + ((i as f64 + offset.x()) * self.pixel_delta_u)
                           + ((j as f64 + offset.y()) * self.pixel_delta_v);
@@ -216,6 +224,16 @@ impl Camera {
         let ray_time = random_double(0.0, 1.0);
 
         Ray::new(ray_origin, ray_direction, ray_time)
+    }
+
+    fn sample_square_stratified(&self, s_i: u32, s_j: u32) -> Vec3 {
+        // Returns the vector to a random point in the square sub-pixel specified by grid
+        // indices s_i and s_j, for an idealized unit square pixel [-.5,-.5] to [+.5,+.5].
+
+        let px = ((s_i as f64 + random_double(0.0, 1.0)) * self.recip_sqrt_spp) - 0.5;
+        let py = ((s_j as f64 + random_double(0.0, 1.0)) * self.recip_sqrt_spp) - 0.5;
+
+        Vec3::new(px, py, 0.0)
     }
 
     fn defocus_disk_sample(&self) -> Point3 {
