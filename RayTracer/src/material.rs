@@ -10,12 +10,23 @@ use std::sync::Arc;
 // use crate::onb::ONB;
 use crate::pdf::{Pdf, CosinePdf, SpherePdf};
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct ScatterRecord {
     pub attenuation: Color,
-    pub pdf_ptr: Option<Arc<dyn Pdf + Send + Sync>>,
+    pub pdf_ptr: Arc<dyn Pdf + Send + Sync>,
     pub skip_pdf: bool,
     pub skip_pdf_ray: Ray,
+}
+
+impl Default for ScatterRecord {
+    fn default() -> Self {
+        ScatterRecord {
+            attenuation: Color::zero(),
+            pdf_ptr: Arc::new(SpherePdf::new()),
+            skip_pdf: false,
+            skip_pdf_ray: Ray::new(Vec3::zero(), Vec3::zero(), 0.0),
+        }
+    }
 }
 
 pub trait Material: Any {
@@ -54,7 +65,7 @@ impl Lambertian {
 impl Material for Lambertian {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord, scatter_rec: &mut ScatterRecord) -> bool {
         scatter_rec.attenuation = self.tex.value(rec.u, rec.v, &rec.p);
-        scatter_rec.pdf_ptr = Some(Arc::new(CosinePdf::new(rec.normal)));
+        scatter_rec.pdf_ptr = Arc::new(CosinePdf::new(rec.normal));
         scatter_rec.skip_pdf = false;
         true
     }
@@ -86,7 +97,6 @@ impl Material for Metal {
         let reflected = reflected.unit() + (self.fuzz * Vec3::random_unit_vector());
 
         scatter_rec.attenuation = self.albedo;
-        scatter_rec.pdf_ptr = None;
         scatter_rec.skip_pdf = true;
         scatter_rec.skip_pdf_ray = Ray::new(rec.p, reflected, r_in.time());
 
@@ -116,7 +126,6 @@ impl Dielectric {
 impl Material for Dielectric {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord, scatter_rec: &mut ScatterRecord) -> bool {
         scatter_rec.attenuation = Color::new(1.0, 1.0, 1.0);
-        scatter_rec.pdf_ptr = None;
         scatter_rec.skip_pdf = true;
         let ri = if rec.front_face { 1.0 / self.refraction_index } else { self.refraction_index };
 
@@ -190,7 +199,7 @@ impl Isotropic {
 impl Material for Isotropic {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord, scatter_rec: &mut ScatterRecord) -> bool {
         scatter_rec.attenuation = self.tex.value(rec.u, rec.v, &rec.p);
-        scatter_rec.pdf_ptr = Some(Arc::new(SpherePdf::new()));
+        scatter_rec.pdf_ptr = Arc::new(SpherePdf::new());
         scatter_rec.skip_pdf = false;
         true
     }

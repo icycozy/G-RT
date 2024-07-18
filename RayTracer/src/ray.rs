@@ -66,30 +66,33 @@ impl Ray {
             return color_from_emission;
         }
 
-        // if srec.skip_pdf {
-        //     return srec.attenuation * srec.skip_pdf_ray.ray_color(background, depth - 1, world, lights);
-        // }
+        if srec.skip_pdf {
+            return srec.attenuation * srec.skip_pdf_ray.ray_color(background, depth - 1, world, lights);
+        }
 
-        // let light_ptr = Arc::new(HittablePdf::new(lights.clone(), rec.p));
-        // let p = MixturePdf::new(light_ptr, srec.pdf_ptr);
+        let light_ptr = Arc::new(HittablePdf::new(lights.clone(), rec.p));
+        let p = MixturePdf::new(light_ptr, srec.pdf_ptr);
 
-        // let scattered = Ray::new(rec.p, p.generate(), self.time());
-        // let pdf_val = p.value(scattered.direction());
-
-        // let scattering_pdf = mat.scattering_pdf(self, &rec, &scattered);
-
-        // let sample_color = scattered.ray_color(background, depth - 1, world, lights);
-        // let color_from_scatter = (srec.attenuation * scattering_pdf * sample_color) / pdf_val;
-
-
-        let light_pdf = HittablePdf::new(lights.clone(), rec.p);
-        let scattered = Ray::new(rec.p, light_pdf.generate(), self.time());
-        let pdf_val = light_pdf.value(scattered.direction());
+        let scattered = Ray::new(rec.p, p.generate(), self.time());
+        let pdf_val = p.value(scattered.direction());
 
         let scattering_pdf = mat.scattering_pdf(self, &rec, &scattered);
 
         let sample_color = scattered.ray_color(background, depth - 1, world, lights);
         let color_from_scatter = (srec.attenuation * scattering_pdf * sample_color) / pdf_val;
+
+        
+        // let p0 = Arc::new(HittablePdf::new(lights.clone(), rec.p));
+        // let p1 = Arc::new(CosinePdf::new(rec.normal));
+        // let mixed_pdf = MixturePdf::new(p0, p1);
+
+        // let scattered = Ray::new(rec.p, mixed_pdf.generate(), self.time());
+        // let pdf_val = mixed_pdf.value(scattered.direction());
+
+        // let scattering_pdf = mat.scattering_pdf(self, &rec, &scattered);
+
+        // let sample_color = scattered.ray_color(background, depth - 1, world, lights);
+        // let color_from_scatter = (srec.attenuation * scattering_pdf * sample_color) / pdf_val;
 
         color_from_emission + color_from_scatter
     }

@@ -10,12 +10,11 @@
 
 * 使用MSAA抗锯齿化后明显改善
 
-![before](1.jpg)
+![before](./fig/1.jpg)
 
-![after](2.jpg)
+![after](./fig/2.jpg)
 
 * MSAA抗锯齿化之后三角形边缘会有黑色，应该是用整点标识pixel时的细节实现问题
-* FXAA
 
 ### Task 3
 
@@ -23,3 +22,13 @@
 
 github repository: git@github.com:icycozy/G-RT.git
 commit: e0f3916
+
+## 7.18 update
+
+### Task2
+
+FXAA 抗锯齿化: 效果不明显.
+
+### Task3
+
+

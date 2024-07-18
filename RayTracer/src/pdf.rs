@@ -74,31 +74,25 @@ impl Pdf for HittablePdf {
 
 pub struct MixturePdf {
     p0: Arc<dyn Pdf + Sync + Send>,
-    p1: Option<Arc<dyn Pdf + Sync + Send>>,
+    p1: Arc<dyn Pdf + Sync + Send>,
 }
 
 impl MixturePdf {
-    pub fn new(p0: Arc<dyn Pdf + Sync + Send>, p1: Option<Arc<dyn Pdf + Sync + Send>>) -> Self {
+    pub fn new(p0: Arc<dyn Pdf + Sync + Send>, p1: Arc<dyn Pdf + Sync + Send>) -> Self {
         MixturePdf { p0, p1 }
     }
 }
 
 impl Pdf for MixturePdf {
     fn value(&self, direction: &Vec3) -> f64 {
-        match &self.p1 {
-            Some(p1) => 0.5 * self.p0.value(direction) + 0.5 * p1.value(direction),
-            None => self.p0.value(direction),
-        }
+        0.5 * self.p0.value(direction) + 0.5 * self.p1.value(direction)
     }
 
     fn generate(&self) -> Vec3 {
         if rand::random::<f64>() < 0.5 {
             self.p0.generate()
         } else {
-            match &self.p1 {
-                Some(p1) => p1.generate(),
-                None => self.p0.generate(),
-            }
+            self.p0.generate()
         }
     }
 }
