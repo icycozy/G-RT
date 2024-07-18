@@ -1,6 +1,4 @@
-# Week2
-
-## Ray Tracing in One Weekend
+# Week 2  Ray Tracing in One Weekend
 
 * 设置viewport，找到左上角.
 * 设ray的颜色线性变化，渲染得到渐变的图.

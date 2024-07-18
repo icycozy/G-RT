@@ -1,4 +1,4 @@
-# Week 1: Games101
+# Week 1  Games101
 
 ## Lab1
 
@@ -31,4 +31,21 @@ FXAA 抗锯齿化: 效果不明显.
 
 ### Task3
 
+渲染各款小牛.
 
+* 小牛方向不对，没有关系，Task1写了旋转物体的函数，手动将小牛转到喜欢的角度:D
+
+![normal](../Games101/normal.png)
+![phong](../Games101/phong.png)
+![texture](../Games101/texture.png)
+
+* texture直接渲染纹理的图片，比较酷.
+
+![bump](../Games101/bump2.png)
+![displacement](../Games101/displacement2.png)
+
+* 可以清晰看出加入凹凸映射之后的立体感增强.
+
+![cool](../Games101/cool.png)
+
+* 失败作，但是酷酷的艺术小牛.
